@@ -10,8 +10,10 @@ return new class extends Migration {
         Schema::create('transaction_payments', function (Blueprint $table) {
             $table->id();
             $table->decimal('amount', 11);
+            $table->decimal('paid_amount', 11)->nullable();
             $table->string('status', 40)->default('PENDING')->index();
-            $table->date('billing_date')->nullable();
+            $table->date('billing_date');
+            $table->date('payment_date')->nullable();
             $table->unsignedSmallInteger('payment_number');
             $table->nullableMorphs('billable');
             $table->foreignId('transaction_id')->constrained()->cascadeOnDelete();
@@ -21,6 +23,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('transaction_items');
+        Schema::dropIfExists('transaction_payments');
     }
 };

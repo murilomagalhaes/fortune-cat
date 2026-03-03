@@ -2,15 +2,18 @@
 
 namespace App\Models;
 
+use App\Enums\TransactionPaymentType;
 use App\Enums\TransactionRecurrencyType;
 use App\Enums\PaymentStatus;
 use App\Observers\TransactionPaymentObserver;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 #[ObservedBy([TransactionPaymentObserver::class])]
 class TransactionPayment extends Model
@@ -25,6 +28,7 @@ class TransactionPayment extends Model
         return [
             'status' => PaymentStatus::class,
             'billing_date' => 'date:Y-m-d',
+            'payment_date' => 'date:Y-m-d',
         ];
     }
 
@@ -41,7 +45,11 @@ class TransactionPayment extends Model
 
     public function markAsPending(): bool
     {
-        return $this->update(['status' => PaymentStatus::PENDING]);
+        return $this->update([
+            'status' => PaymentStatus::PENDING,
+            'payment_date' => null,
+            'paid_amount' => null,
+        ]);
     }
 
     public function isPending(): bool
@@ -54,34 +62,77 @@ class TransactionPayment extends Model
         return $this->status === PaymentStatus::PAID;
     }
 
-    public function markAsPaid(?float $amount = null, ?string $billableType = null, mixed $billableId = null): bool
+    public function isRecurring(): bool
+    {
+        return $this->monthlyRecurrency() || $this->yearlyRecurrency();
+    }
+
+    public function monthlyRecurrency(): bool
+    {
+        $this->loadMissing('transaction');
+
+        return $this->transaction->recurrency_type === TransactionRecurrencyType::MONTHLY;
+    }
+
+    public function yearlyRecurrency(): bool
+    {
+        $this->loadMissing('transaction');
+
+        return $this->transaction->recurrency_type === TransactionRecurrencyType::YEARLY;
+    }
+
+    public function markAsPaid(?float $paidAmount = null, ?string $billableType = null, mixed $billableId = null): bool
     {
         return $this->update([
-            'amount' => $amount,
+            'paid_amount' => $paidAmount,
             'billable_type' => $billableType,
             'billable_id' => $billableId,
             'status' => PaymentStatus::PAID,
+            'payment_date' => now()->format('Y-m-d'),
         ]);
     }
 
     public function scopeFilterBillingYearMonth(Builder $query, int $year, int $month): Builder
     {
-        $padYear = str($year)->padLeft(4, '20');
+        $padYear = str($year)->padLeft(4, '20')->toInteger();
+        $lastDayOfMonth = Carbon::createFromDate($padYear, $month)->endOfMonth()->toDateString();
 
         return $query
             ->leftJoinRelation('transaction')
-            ->whereMonth('billing_date', $month)
-            ->orWhere('recurring_month', $month)
-            ->orWhere(
-                fn(Builder $query) => $query
-                    ->where('transactions.recurrency_type', TransactionRecurrencyType::MONTHLY)
-                    ->where('transactions.transaction_date', '<=', now()->setYear($padYear->toInteger())->setMonth($month)->endOfMonth())
-            )
-            ->orWhere(
-                column: fn(Builder $query) => $query
-                    ->where('transactions.recurrency_type', TransactionRecurrencyType::YEARLY)
-                    ->where('transactions.transaction_date', '<=', now()->setYear($padYear->toInteger())->setMonth($month)->endOfMonth())
-                    ->whereYear('billing_date', $padYear->toInteger())
-            );
+            ->where(function (Builder $query) use ($month, $padYear, $lastDayOfMonth) {
+                $query
+                    ->where(function (Builder $query) use ($month, $padYear) {
+                        $query->whereMonth('transaction_payments.billing_date', '=', $month)
+                            ->whereYear('transaction_payments.billing_date', '=', $padYear);
+                    })
+                    // Shows the last pending payment for the recurring months
+                    ->orWhere(function (Builder $query) use ($lastDayOfMonth) {
+                        $query->where('transactions.recurrency_type', '=', TransactionRecurrencyType::MONTHLY)
+                            ->where('transaction_payments.status', '=', PaymentStatus::PENDING)
+                            ->where('transaction_payments.billing_date', '<=', $lastDayOfMonth)
+                            ->where('transaction_payments.billing_date', '=', function (QueryBuilder $subQuery) use ($lastDayOfMonth) {
+                                $subQuery->selectRaw('MAX(tp2.billing_date)')
+                                    ->from('transaction_payments as tp2')
+                                    ->whereColumn('tp2.transaction_id', 'transaction_payments.transaction_id')
+                                    ->where('tp2.status', '=', PaymentStatus::PENDING)
+                                    ->where('tp2.billing_date', '<=', $lastDayOfMonth);
+                            });
+                    })
+                    // Shows the last pending payment for the recurring month/year
+                    ->orWhere(function (Builder $query) use ($month, $padYear) {
+                        $query->where('transactions.recurrency_type', '=', TransactionRecurrencyType::YEARLY)
+                            ->where('transaction_payments.status', '=', PaymentStatus::PENDING)
+                            ->whereMonth('transaction_payments.billing_date', '=', $month)
+                            ->whereYear('transaction_payments.billing_date', '<=', $padYear)
+                            ->where('transaction_payments.billing_date', '=', function (QueryBuilder $subQuery) use ($month, $padYear) {
+                                $subQuery->selectRaw('MAX(tp2.billing_date)')
+                                    ->from('transaction_payments as tp2')
+                                    ->whereColumn('tp2.transaction_id', 'transaction_payments.transaction_id')
+                                    ->where('tp2.status', '=', PaymentStatus::PENDING)
+                                    ->whereMonth('tp2.billing_date', '=', $month)
+                                    ->whereYear('tp2.billing_date', '<=', $padYear);
+                            });
+                    });
+            });
     }
 }

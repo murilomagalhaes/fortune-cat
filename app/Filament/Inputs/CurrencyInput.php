@@ -13,7 +13,7 @@ class CurrencyInput
         return TextInput::make($name)
             ->mutateStateForValidationUsing(fn(?string $state) => CurrencyHelper::stringToFloat($state, $decimalSeparator, $thousandsSeparator))
             ->dehydrateStateUsing(fn(?string $state) => CurrencyHelper::stringToFloat($state, $decimalSeparator, $thousandsSeparator))
-            ->formatStateUsing(fn(?string $state) => number_format($state, 2, $decimalSeparator, $thousandsSeparator))
+            ->formatStateUsing(fn(?string $state) => isset($state) && $state !== "" ? number_format($state, 2, $decimalSeparator, $thousandsSeparator) : null)
             ->mask(RawJs::make("\$money(\$input, '$decimalSeparator', '$thousandsSeparator')"));
     }
 }

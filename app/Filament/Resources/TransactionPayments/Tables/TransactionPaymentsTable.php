@@ -15,6 +15,7 @@ use App\Models\TransactionPayment;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\MorphToSelect;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -25,6 +26,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
@@ -75,18 +77,29 @@ class TransactionPaymentsTable
                     ->label('Data da cobrança')
                     ->width(1)
                     ->date('d/m/Y')
-                    ->placeholder(function (TransactionPayment $record) {
+                    ->icon(fn(TransactionPayment $record) => $record->transaction->payment_type === TransactionPaymentType::RECURRENT ? Heroicon::ArrowPath : null)
+                    ->iconColor(Color::Blue)
+                    ->iconPosition('after')
+                    ->tooltip(function (TransactionPayment $record) {
 
                         $recurringDay = data_get($record, 'transaction.recurring_day');
                         $recurringMonth = data_get($record, 'transaction.recurring_month');
 
                         return match (data_get($record, 'transaction.recurrency_type')) {
-                            TransactionRecurrencyType::MONTHLY => "Todo dia {$recurringDay}",
-                            TransactionRecurrencyType::YEARLY => "Todo dia {$recurringDay} do mês de {$recurringMonth}",
-                            default => "N/A"
+                            TransactionRecurrencyType::MONTHLY => "Cobrado todo dia {$recurringDay}",
+                            TransactionRecurrencyType::YEARLY => "Cobrado todo dia {$recurringDay} do mês de {$recurringMonth}",
+                            default => null
                         };
 
                     })
+                    ->sortable(),
+
+                /** Cobrança */
+                TextColumn::make('payment_date')
+                    ->label('Pago em')
+                    ->width(1)
+                    ->date('d/m/Y')
+                    ->placeholder("Pendente")
                     ->sortable(),
 
                 /** Status */
@@ -98,33 +111,25 @@ class TransactionPaymentsTable
                         PaymentStatus::PAID => 'success',
                     }),
 
-                /** Amount */
+                /** Valor */
                 TextColumn::make('amount')
                     ->label('Valor')
                     ->prefix('R$')
                     ->numeric()
                     ->sortable()
                     ->alignEnd()
-                    ->summarize([
-                        Summarizer::make()
-                            ->using(function (Builder $query) {
+                    ->summarize([self::amountSummarizer("amount", "Valor")])
+                    ->color(fn(TransactionPayment $record) => $record->transaction->transaction_type === TransactionType::EXPENSE ? 'danger' : 'success'),
 
-                                $transactionJoin = $query->leftJoin('transactions', 'transactions.id', '=', 'transaction_payments.transaction_id');
-
-                                $revenuesSum = $transactionJoin->clone()
-                                    ->where('transactions.transaction_type', '=', TransactionType::REVENUE->value)
-                                    ->sum('transaction_payments.amount');
-
-                                $expensesSum = $transactionJoin->clone()
-                                    ->where('transactions.transaction_type', '=', TransactionType::EXPENSE->value)
-                                    ->sum('transaction_payments.amount');
-
-                                return $revenuesSum - $expensesSum;
-
-                            })
-                            ->money('BRL')
-                            ->label("Total")
-                    ])
+                /** Valor Pago */
+                TextColumn::make('paid_amount')
+                    ->label('Valor pago')
+                    ->placeholder("R$ 0,00")
+                    ->prefix('R$')
+                    ->numeric()
+                    ->sortable()
+                    ->alignEnd()
+                    ->summarize([self::amountSummarizer("paid_amount", "Valor Pago")])
                     ->color(fn(TransactionPayment $record) => $record->transaction->transaction_type === TransactionType::EXPENSE ? 'danger' : 'success'),
             ])
             ->filters([
@@ -137,11 +142,13 @@ class TransactionPaymentsTable
                                 ->preload()
                                 ->default(now()->month)
                                 ->placeholder("Mês")
+                                ->required()
                                 ->selectablePlaceholder(false)
                                 ->options(Month::class),
                             TextInput::make('billing_year')
                                 ->placeholder("Ano")
                                 ->default(now()->year)
+                                ->required()
                                 ->placeholder("Ano")
                                 ->numeric()
                         ])
@@ -152,7 +159,8 @@ class TransactionPaymentsTable
 
                         [$month, $year] = array_values($data);
 
-                        return $month && $year ? Month::from($month)->getLabel() . ' ' . $year : null;
+                        return Indicator::make($month && $year ? Month::from($month)->getLabel() . ' ' . $year : null)
+                            ->removable(false);
 
                     })
                     ->modifyBaseQueryUsing(function (EloquentBuilder $query, array $data) {
@@ -162,7 +170,11 @@ class TransactionPaymentsTable
                         $month && $year && $query->filterBillingYearMonth($year, $month);
 
                     }),
-
+                SelectFilter::make('transaction.transaction_type')
+                    ->label("Tipo de pagamento")
+                    ->searchable()
+                    ->options(TransactionType::class)
+                    ->preload(),
                 SelectFilter::make('transaction.category')
                     ->label("Categoria")
                     ->searchable()
@@ -221,7 +233,8 @@ class TransactionPaymentsTable
                     ->color(Color::Green)
                     ->icon(Heroicon::CheckCircle)
                     ->fillForm(fn(TransactionPayment $record) => [
-                        'amount' => $record->amount,
+                        'paid_amount' => $record->amount,
+                        'payment_date' => now(),
                         'billable_type' => $record->billable_type,
                         'billable_id' => $record->billable_id,
                     ])
@@ -230,7 +243,6 @@ class TransactionPaymentsTable
                         // Cobrado em
                         MorphToSelect::make('billable')
                             ->label("Cobrado em")
-                            ->live()
                             ->native(false)
                             ->types(
                                 array_map(fn($type) => MorphToSelect\Type::make($type)
@@ -244,15 +256,21 @@ class TransactionPaymentsTable
                             )
                             ->modifyKeySelectUsing(fn(Select $select): Select => $select->searchable()->preload()->allowHtml()),
 
-                        /** Valor */
-                        CurrencyInput::make('amount')
-                            ->label('Valor')
+                        /** Data de pagamento */
+                        DatePicker::make('payment_date')
+                            ->label('Data de pagamento')
+                            ->required(),
+
+
+                        /** Valor Pago */
+                        CurrencyInput::make('paid_amount')
+                            ->label('Valor pago')
                             ->prefix("R$")
                             ->rules(['required', 'numeric', 'min:0.01']),
 
                     ])
                     ->action(fn(array $data, TransactionPayment $record) => $record->markAsPaid(
-                        amount: $data['amount'],
+                        paidAmount: $data['paid_amount'],
                         billableType: $data['billable_type'],
                         billableId: $data['billable_id'],
                     )),
@@ -262,6 +280,29 @@ class TransactionPaymentsTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function amountSummarizer(string $column, string $label)
+    {
+        return Summarizer::make()
+            ->using(function (Builder $query) use ($column) {
+
+                $transactionJoin = $query->leftJoin('transactions', 'transactions.id', '=', 'transaction_payments.transaction_id');
+
+                $revenuesSum = $transactionJoin->clone()
+                    ->where('transactions.transaction_type', '=', TransactionType::REVENUE->value)
+                    ->sum("transaction_payments.{$column}");
+
+                $expensesSum = $transactionJoin->clone()
+                    ->where('transactions.transaction_type', '=', TransactionType::EXPENSE->value)
+                    ->sum("transaction_payments.{$column}");
+
+                return $revenuesSum - $expensesSum;
+
+            })
+            ->money('BRL')
+            ->label($label);
+
     }
 
 }

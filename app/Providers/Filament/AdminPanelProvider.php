@@ -29,6 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->brandName('Budget Manager')
             ->login()
+            ->topNavigation()
             ->colors([
                 // 'primary' => Color::Pink[300],
                 'primary' => Color::Green,

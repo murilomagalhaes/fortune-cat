@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Transactions;
 
+use App\Enums\NavigationGroup;
 use App\Filament\Resources\Transactions\Pages\ListTransactions;
 use App\Filament\Resources\Transactions\Schemas\TransactionForm;
 use App\Filament\Resources\Transactions\Tables\TransactionsTable;
@@ -17,6 +18,8 @@ class TransactionResource extends Resource
 {
     protected static ?string $model = Transaction::class;
 
+    protected static ?string $recordTitleAttribute = 'name';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowsUpDown;
 
     protected static ?string $label = 'Transação';
@@ -24,6 +27,8 @@ class TransactionResource extends Resource
     protected static ?string $pluralLabel = 'Transações';
 
     protected static ?int $navigationSort = 2;
+
+    protected static null|string|\UnitEnum $navigationGroup = NavigationGroup::TRANSACTIONS;
 
     public static function form(Schema $schema): Schema
     {

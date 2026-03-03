@@ -45,5 +45,10 @@ class Transaction extends Model
         return $this->morphTo();
     }
 
+    public function isRecurring(): bool
+    {
+        return $this->payment_type === TransactionPaymentType::RECURRENT;
+    }
+
 
 }

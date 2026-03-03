@@ -2,15 +2,12 @@
 
 namespace App\Filament\Resources\TransactionPayments;
 
-use App\Filament\Resources\TransactionPayments\Pages\CreateTransactionPayment;
-use App\Filament\Resources\TransactionPayments\Pages\EditTransactionPayment;
+use App\Enums\NavigationGroup;
 use App\Filament\Resources\TransactionPayments\Pages\ListTransactionPayments;
-use App\Filament\Resources\TransactionPayments\Schemas\TransactionPaymentForm;
 use App\Filament\Resources\TransactionPayments\Tables\TransactionPaymentsTable;
 use App\Models\TransactionPayment;
 use BackedEnum;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
@@ -26,10 +23,7 @@ class TransactionPaymentResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function form(Schema $schema): Schema
-    {
-        return TransactionPaymentForm::configure($schema);
-    }
+    protected static null|string|\UnitEnum $navigationGroup = NavigationGroup::TRANSACTIONS;
 
     public static function table(Table $table): Table
     {

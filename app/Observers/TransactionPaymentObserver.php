@@ -2,6 +2,8 @@
 
 namespace App\Observers;
 
+use App\Enums\PaymentStatus;
+use App\Enums\TransactionRecurrencyType;
 use App\Models\BankAccount;
 use App\Models\CreditCard;
 use App\Models\TransactionPayment;
@@ -25,38 +27,47 @@ class TransactionPaymentObserver
         }
 
         if ($transactionPayment->wasChanged('status')) {
-            $this->syncBillableBalance($transactionPayment);
+            $this->handleRecurrency($transactionPayment);
         }
     }
 
-    public function deleted(TransactionPayment $transactionPayment): void
+    private function handleRecurrency(TransactionPayment $transactionPayment): void
     {
-    }
-
-    private function syncBillableBalance(TransactionPayment $transactionPayment): void
-    {
-        $billable = $transactionPayment->billable;
-        $amount = (float) $transactionPayment->amount;
-        $changedToPaid = $transactionPayment->isPaid();
-
-        if ($billable instanceof BankAccount) {
-            $changedToPaid
-                ? $billable->decrement('balance', $amount)
-                : $billable->increment('balance', $amount);
+        if (!$transactionPayment->transaction->isRecurring()) {
+            return;
         }
 
-        if ($billable instanceof CreditCard) {
-            $changedToPaid
-                ? $billable->decrement('used_limit', $amount)
-                : $billable->increment('used_limit', $amount);
+        if ($transactionPayment->isPaid()) {
+            $billingDate = match ($transactionPayment->transaction->recurrency_type) {
+                TransactionRecurrencyType::YEARLY => $transactionPayment->billing_date
+                    ->startOfYear()
+                    ->addYear()
+                    ->month($transactionPayment->transaction->recurring_month)
+                    ->day($transactionPayment->transaction->recurring_day),
+                default => $transactionPayment->billing_date
+                    ->startOfMonth()
+                    ->addMonth()
+                    ->day($transactionPayment->transaction->recurring_day),
+            };
 
-            $billable->load('bankAccount');
+            TransactionPayment::query()
+                ->firstOrCreate(
+                    [
+                        'transaction_id' => $transactionPayment->transaction_id,
+                        'payment_number' => $transactionPayment->payment_number + 1,
+                    ],
+                    [
+                        'amount' => $transactionPayment->amount,
+                        'billing_date' => $billingDate,
+                        'billable_type' => $transactionPayment->billable_type,
+                        'billable_id' => $transactionPayment->billable_id,
+                        'status' => PaymentStatus::PENDING,
+                    ]
+                );
 
-            if ($billable->bankAccount) {
-                $changedToPaid
-                    ? $billable->bankAccount->decrement('balance', $amount)
-                    : $billable->bankAccount->increment('balance', $amount);
-            }
+
         }
+
+
     }
 }

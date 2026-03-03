@@ -8,16 +8,19 @@ use App\Enums\TransactionRecurrencyType;
 use App\Enums\PaymentStatus;
 use App\Models\CreditCard;
 use App\Models\TransactionPayment;
+use Carbon\Carbon;
 
 class TransactionsService
 {
     public function generatePayments(TransactionDTO $transactionDTO): \Illuminate\Support\Collection
     {
         $billingDate = $transactionDTO->transactionDate->clone();
+        $paymentsCount = $transactionDTO->paymentsCount;
+        $amount = bcdiv($transactionDTO->totalAmount, $transactionDTO->paymentsCount, 2);
 
-        $amount = bcdiv($transactionDTO->totalAmount, $transactionDTO->itemsCount, 2);
-
-        if ($transactionDTO->billableType === CreditCard::class && $transactionDTO->billableId) {
+        if ($transactionDTO->paymentType === TransactionPaymentType::RECURRENT) {
+            $billingDate->startOfMonth()->day($transactionDTO->recurringDay);
+        } else if ($transactionDTO->billableType === CreditCard::class && $transactionDTO->billableId) {
 
             $creditCard = CreditCard::find($transactionDTO->billableId);
 
@@ -28,42 +31,36 @@ class TransactionsService
                 : $transactionDTO->transactionDate->clone()->addMonth()->day($creditCard->due_date);
         }
 
+        $yearsSinceTransaction = ceil(Carbon::now()->diffInYears($transactionDTO->transactionDate, true));
+        $monthsSinceTransaction = ceil(Carbon::now()->diffInMonths($transactionDTO->transactionDate, true));
+
+        $paymentsCount = $transactionDTO->recurrencyType === TransactionRecurrencyType::MONTHLY ? $monthsSinceTransaction + 1 : $paymentsCount;
+        $paymentsCount = $transactionDTO->recurrencyType === TransactionRecurrencyType::YEARLY ? $yearsSinceTransaction + 1 : $paymentsCount;
+
         $items = collect();
 
-        foreach (range(1, $transactionDTO->itemsCount) as $installment) {
+        foreach (range(1, $paymentsCount) as $installment) {
 
             $status = $billingDate->isPast() ? PaymentStatus::PAID : PaymentStatus::PENDING;
 
-            if ($transactionDTO->recurrencyType === TransactionRecurrencyType::MONTHLY) {
-
-                $status = now()->day >= $transactionDTO->recurringDay
-                    ? PaymentStatus::PAID
-                    : PaymentStatus::PENDING;
-
-            } else if ($transactionDTO->recurrencyType === TransactionRecurrencyType::YEARLY) {
-
-                $status = now()->month == $transactionDTO->recurringMonth && now()->day >= $transactionDTO->recurringDay
-                    ? PaymentStatus::PAID
-                    : PaymentStatus::PENDING;
-
-            }
+            $isPaid = $status === PaymentStatus::PAID;
 
             $items->push(new TransactionPayment([
                 'amount' => $amount,
-                'billing_date' => match (true) {
-                    $transactionDTO->paymentType !== TransactionPaymentType::RECURRENT => $billingDate->clone(),
-                    $transactionDTO->paymentType === TransactionPaymentType::RECURRENT && $status === PaymentStatus::PAID => $billingDate->clone()
-                        ->startOfMonth()
-                        ->addDays($transactionDTO->recurringDay),
-                    default => null
-                },
+                'paid_amount' => $isPaid ? $amount : null,
+                'billing_date' => $billingDate,
+                'payment_date' => $isPaid ? $billingDate : null,
                 'payment_number' => $installment,
                 'billable_type' => $transactionDTO->billableType,
                 'billable_id' => $transactionDTO->billableId,
                 'status' => $status,
             ]));
 
-            $billingDate->addMonth();
+            $billingDate = match ($transactionDTO->recurrencyType) {
+                TransactionRecurrencyType::YEARLY => $billingDate->clone()->addYear(),
+                default => $billingDate->clone()->addMonth(),
+            };
+
 
         }
 

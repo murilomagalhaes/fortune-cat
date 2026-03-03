@@ -10,6 +10,7 @@ use App\Models\BankAccount;
 use App\Models\CreditCard;
 use App\Models\Transaction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Colors\Color;
@@ -88,13 +89,18 @@ class TransactionsTable
                     ->sortable(),
 
                 /** Valor */
-                TextColumn::make('payments_sum_amount')
+                TextColumn::make('payments_sum_paid_amount')
                     ->sum([
                         'payments' => fn($query) => $query->where('status', '=', PaymentStatus::PAID)
-                    ], 'amount')
+                    ], 'paid_amount')
                     ->label("Valor pago")
                     ->money('BRL')
+                    ->placeholder('R$ 0,00')
                     ->alignEnd()
+                    ->color(fn(Transaction $record) => match ($record->transaction_type) {
+                        TransactionType::EXPENSE => Color::Red,
+                        TransactionType::REVENUE => Color::Green,
+                    })
                     ->sortable(),
 
             ])
@@ -107,8 +113,8 @@ class TransactionsTable
                     ->relationship('category', 'name'),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->steps(TransactionForm::steps()),
+                EditAction::make()->steps(TransactionForm::steps()),
+                DeleteAction::make(),
             ])
             ->groups([
                 Group::make('transaction_type')

@@ -22,13 +22,13 @@ class TransactionDTO
         public Carbon                     $transactionDate,
         public ?int                       $recurringDay,
         public ?Month                     $recurringMonth,
-        public ?int                       $itemsCount, // Installments
+        public ?int                       $paymentsCount, // Payments / Installments
         public ?string                    $billableType,
         public ?int                       $billableId,
     )
     {
-        if ($this->paymentType !== TransactionPaymentType::INSTALLMENTS || !$this->itemsCount) {
-            $this->itemsCount = 1;
+        if ($this->paymentType !== TransactionPaymentType::INSTALLMENTS || !$this->paymentsCount) {
+            $this->paymentsCount = 1;
         }
 
         if ($this->paymentType !== TransactionPaymentType::RECURRENT) {

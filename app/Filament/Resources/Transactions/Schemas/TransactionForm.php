@@ -91,7 +91,7 @@ class TransactionForm
                 /** Observações */
                 RichEditor::make('notes')
                     ->label('Observações')
-                    ->extraAttributes(['class' => 'min-h-[160px]'])
+                    ->extraInputAttributes(['style' => 'min-height: 10em'])
                     ->columnSpanFull(),
             ]);
     }
@@ -135,6 +135,7 @@ class TransactionForm
                 CurrencyInput::make('total_amount')
                     ->label('Valor')
                     ->prefix("R$")
+                    ->placeholder("Ex: 190,00")
                     ->rules(['required', 'numeric', 'min:0.01']),
 
                 /** Recorrência */
@@ -212,23 +213,49 @@ class TransactionForm
                     ->modifyKeySelectUsing(fn(Select $select): Select => $select->searchable()->preload()->allowHtml())
                     ->afterStateUpdated(self::updatePayments(...)),
 
-                // Data da transação
-                TextEntry::make('transaction_date_info')
-                    ->label('Data da transação')
-                    ->badge()
-                    ->date('d/m/Y')
-                    ->state(fn(Get $get) => $get('transaction_date'))
-                    ->visible(fn(Get $get) => $get('transaction_date')),
+                Grid::make()
+                    ->components([
+                        // Data da transação
+                        TextEntry::make('transaction_date_info')
+                            ->label('Data da transação')
+                            ->badge()
+                            ->date('d/m/Y')
+                            ->state(fn(Get $get) => $get('transaction_date')),
+
+                        /** Recurrency info */
+                        TextEntry::make('recurrency')
+                            ->label("Vencimento")
+                            ->badge()
+                            ->disabled()
+                            ->hidden(fn(Get $get) => $get('payment_type') !== TransactionPaymentType::RECURRENT)
+                            ->state(function (Get $get) {
+
+                                if ($get('payment_type') !== TransactionPaymentType::RECURRENT) {
+                                    return "N/A";
+                                }
+
+                                $recurringDay = $get('recurring_day');
+                                $recurringMonth = $get('recurring_month');
+
+                                return match ($get('recurrency_type')) {
+                                    TransactionRecurrencyType::MONTHLY => "Todo dia $recurringDay",
+                                    TransactionRecurrencyType::YEARLY => "Todo dia $recurringDay do mês $recurringMonth",
+                                    default => "N/A"
+                                };
+
+                            })
+                    ]),
+
 
                 /** Itens/Installments */
                 Repeater::make('payments')
                     ->label(fn(Get $get) => str("Pagamento")->plural($get('payments_count')))
                     ->relationship()
-                    ->live()
                     ->table([
                         Repeater\TableColumn::make('#')->width(1),
                         Repeater\TableColumn::make('Valor'),
                         Repeater\TableColumn::make('Vencimento'),
+                        Repeater\TableColumn::make('Pagamento'),
                         Repeater\TableColumn::make('Status')
                     ])
                     ->mutateRelationshipDataBeforeCreateUsing(self::mutatePaymentData(...))
@@ -237,58 +264,37 @@ class TransactionForm
                     ->reorderable(false)
                     ->schema([
 
-                        /** Number */
+                        /** Número da parcela */
                         TextEntry::make('payment_number_info')
                             ->label("Parcela")
+                            ->saved(false)
                             ->state(fn(Get $get) => $get('payment_number'))
                             ->disabled(),
 
-                        /** Amount */
+                        /** Valor */
                         CurrencyInput::make('amount')
                             ->label("Valor")
                             ->prefix("R$")
                             ->rules(['required', 'numeric', 'min:0.01']),
 
-                        Grid::make()
-                            ->columns(1)
-                            ->schema([
+                        /** Data da cobrança */
+                        DatePicker::make('billing_date')
+                            ->label("Vencimento")
+                            ->required(),
 
-                                /** Billing date */
-                                DatePicker::make('billing_date')
-                                    ->label("Vencimento")
-                                    ->hidden(fn(Get $get) => $get('../../payment_type') === TransactionPaymentType::RECURRENT)
-                                    ->required(fn(Get $get) => $get('../../payment_type') !== TransactionPaymentType::RECURRENT),
-
-                                /** Recurrency info */
-                                TextEntry::make('recurrency')
-                                    ->label("Vencimento")
-                                    ->dehydrated(false)
-                                    ->disabled()
-                                    ->hidden(fn(Get $get) => $get('../../payment_type') !== TransactionPaymentType::RECURRENT)
-                                    ->state(function (Get $get) {
-
-                                        if ($get('../../payment_type') !== TransactionPaymentType::RECURRENT) {
-                                            return "N/A";
-                                        }
-
-                                        $recurringDay = $get('../../recurring_day');
-                                        $recurringMonth = $get('../../recurring_month');
-
-                                        return match ($get('../../recurrency_type')) {
-                                            TransactionRecurrencyType::MONTHLY => "Todo dia $recurringDay",
-                                            TransactionRecurrencyType::YEARLY => "Todo dia $recurringDay do mês $recurringMonth",
-                                            default => "N/A"
-                                        };
-
-                                    }),
-                            ]),
+                        /** Dara do pagamento */
+                        DatePicker::make('payment_date')
+                            ->label("Pagamento")
+                            ->requiredIf('status', PaymentStatus::PAID),
 
                         /** Status */
                         Select::make('status')
                             ->native(false)
                             ->required()
                             ->preload()
+                            ->live()
                             ->selectablePlaceholder(false)
+                            ->afterStateUpdated(fn(Set $set) => $set('payment_date', null))
                             ->options(PaymentStatus::class)
                     ])
                     ->visible(fn(Get $get) => filled($get('payments')))
@@ -305,7 +311,7 @@ class TransactionForm
     {
         $needsToUpdate = !$record
             || $get('payments_count') != $record->payments_count
-            || CurrencyHelper::stringToFloat($get('total_amount') !== (float)$record->total_amount);
+            || CurrencyHelper::stringToFloat($get('total_amount')) !== (float)$record->total_amount;
 
         if (!$needsToUpdate) {
             return;
@@ -324,7 +330,7 @@ class TransactionForm
             transactionDate: Carbon::parse($get('transaction_date')),
             recurringDay: $get('recurring_day'),
             recurringMonth: $get->enum('recurring_month', Month::class),
-            itemsCount: (int)$get('payments_count'),
+            paymentsCount: (int)$get('payments_count'),
             billableType: $get('billable_type'),
             billableId: $get('billable_id'),
         ));
