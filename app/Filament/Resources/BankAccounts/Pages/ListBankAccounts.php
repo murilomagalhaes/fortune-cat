@@ -5,6 +5,7 @@ namespace App\Filament\Resources\BankAccounts\Pages;
 use App\Filament\Resources\BankAccounts\BankAccountResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Support\Icons\Heroicon;
 
 class ListBankAccounts extends ListRecords
 {
@@ -13,7 +14,8 @@ class ListBankAccounts extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->icon(Heroicon::OutlinedBuildingOffice),
         ];
     }
 }

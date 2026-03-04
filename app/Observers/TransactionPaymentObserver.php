@@ -28,6 +28,41 @@ class TransactionPaymentObserver
 
         if ($transactionPayment->wasChanged('status')) {
             $this->handleRecurrency($transactionPayment);
+            $this->handleBalanceUpdate($transactionPayment);
+        }
+    }
+
+    private function handleBalanceUpdate(TransactionPayment $transactionPayment): void
+    {
+        $transactionPayment->loadMissing('billable');
+
+        $getBankAccountUpdatedBalance = fn(?float $currentBalance) => match (true) {
+            $transactionPayment->isPaid() && $transactionPayment->isRevenue() => $currentBalance + $transactionPayment->paid_amount,
+            $transactionPayment->isPaid() && $transactionPayment->isExpense() => $currentBalance - $transactionPayment->paid_amount,
+            $transactionPayment->isPending() && $transactionPayment->isRevenue() => $currentBalance - $transactionPayment->paid_amount,
+            $transactionPayment->isPending() && $transactionPayment->isExpense() => $currentBalance + $transactionPayment->paid_amount,
+            default => $currentBalance,
+        };
+
+        if ($transactionPayment->billable instanceof BankAccount) {
+            $transactionPayment->billable->update(['balance' => $getBankAccountUpdatedBalance($transactionPayment->billable->balance)]);
+        }
+
+        if ($transactionPayment->billable instanceof CreditCard) {
+
+            $usedLimit = match (true) {
+                $transactionPayment->isPaid() => $transactionPayment->billable->used_limit - $transactionPayment->paid_amount,
+                $transactionPayment->isPending() => $transactionPayment->billable->used_limit + $transactionPayment->paid_amount,
+                default => $transactionPayment->billable->used_limit,
+            };
+
+            $transactionPayment->billable->update(['used_limit' => $usedLimit]);
+
+            if ($transactionPayment->billable->bank_account_id) {
+                $bankAccount = BankAccount::find($transactionPayment->billable->bank_account_id);
+                $bankAccount->update(['balance' => $getBankAccountUpdatedBalance($bankAccount->balance)]);
+            }
+
         }
     }
 

@@ -13,6 +13,7 @@ use App\Models\BankAccount;
 use App\Models\CreditCard;
 use App\Models\TransactionPayment;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\DatePicker;
@@ -31,6 +32,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder;
 
 class TransactionPaymentsTable
@@ -199,6 +201,7 @@ class TransactionPaymentsTable
                     ->titlePrefixedWithLabel(false),
                 Group::make('billable_type')
                     ->label("Carteira")
+                    ->scopeQueryByKeyUsing(fn(EloquentBuilder $query, string $key) => $query->where('transaction_payments.billable_type', $key))
                     ->getTitleFromRecordUsing(function (TransactionPayment $record) {
                         if (!$record->billable) {
                             return 'N/A';
@@ -223,6 +226,7 @@ class TransactionPaymentsTable
                     ->visible(fn(TransactionPayment $record) => $record->isPaid())
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->color(Color::Orange)
+                    ->successNotificationTitle("Pagamento estornado com sucesso!")
                     ->action(fn(TransactionPayment $record) => $record->markAsPending()),
 
                 /** Confirmar pagamento */
@@ -231,6 +235,7 @@ class TransactionPaymentsTable
                     ->label("Confirmar")
                     ->visible(fn(TransactionPayment $record) => $record->isPending())
                     ->color(Color::Green)
+                    ->successNotificationTitle("Pagamento confirmado com sucesso!")
                     ->icon(Heroicon::CheckCircle)
                     ->fillForm(fn(TransactionPayment $record) => [
                         'paid_amount' => $record->amount,
@@ -271,15 +276,40 @@ class TransactionPaymentsTable
                     ])
                     ->action(fn(array $data, TransactionPayment $record) => $record->markAsPaid(
                         paidAmount: $data['paid_amount'],
+                        paymentDate: $data['payment_date'],
                         billableType: $data['billable_type'],
                         billableId: $data['billable_id'],
                     )),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+
+                    /** Confirmar selecionados */
+                    BulkAction::make('bulk-confirm-payment')
+                        ->icon(Heroicon::CheckCircle)
+                        ->label("Confirmar")
+                        ->color(Color::Green)
+                        ->successNotificationTitle("Pagamentos confirmados com sucesso!")
+                        ->requiresConfirmation()
+                        ->modalHeading("Confirmar pagamentos")
+                        ->action(fn(Collection $records) => $records->each(fn(TransactionPayment $record) => $record->markAsPaid(
+                            billableType: $record->billable_type,
+                            billableId: $record->billable_id,
+                        ))),
+
+                    /** Estornar selecionados */
+                    BulkAction::make('bulk-reverse-payment')
+                        ->icon(Heroicon::ArrowUturnLeft)
+                        ->label("Estornar")
+                        ->color(Color::Orange)
+                        ->successNotificationTitle("Pagamentos estornados com sucesso!")
+                        ->requiresConfirmation()
+                        ->modalHeading("Estornar pagamentos")
+                        ->action(fn(Collection $records) => $records->each(fn(TransactionPayment $record) => $record->markAsPending())),
                 ]),
-            ]);
+            ])
+            ->stackedOnMobile();
+
     }
 
     public static function amountSummarizer(string $column, string $label)

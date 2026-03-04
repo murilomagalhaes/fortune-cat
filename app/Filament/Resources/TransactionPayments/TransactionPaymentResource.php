@@ -15,15 +15,16 @@ class TransactionPaymentResource extends Resource
 {
     protected static ?string $model = TransactionPayment::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowsUpDown;
+
+    protected static ?string $navigationLabel = 'Fluxo de Caixa';
 
     protected static ?string $label = 'Pagamento';
 
     protected static ?string $recordTitleAttribute = 'payment_number';
 
-    protected static ?int $navigationSort = 1;
 
-    protected static null|string|\UnitEnum $navigationGroup = NavigationGroup::TRANSACTIONS;
+    protected static ?int $navigationSort = 1;
 
     public static function table(Table $table): Table
     {

@@ -47,67 +47,70 @@ class CreditCardForm
         return $schema
             ->columns(1)
             ->components([
-
-                /** Nome */
-                TextInput::make('name')
-                    ->label('Nome')
-                    ->required(),
-
-                /** Limites (Total/Utilizado) */
-                Grid::make()
-                    ->schema([
-                        CurrencyInput::make('total_limit')
-                            ->label('Limite total')
-                            ->prefix("R$")
-                            ->required()
-                            ->minValue(0)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(self::updateAvailableLimit(...)),
-                        CurrencyInput::make('used_limit')
-                            ->label('Limite utilizado')
-                            ->prefix("R$")
-                            ->required()
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(self::updateAvailableLimit(...)),
-                    ]),
-
-                /** Limite disponivel */
-                TextEntry::make('available_limit')
-                    ->label("Limite disponível")
-                    ->badge()
-                    ->money('BRL')
-                    ->default(0),
-
-                /** Vencimentos */
-                Grid::make()
-                    ->schema([
-                        TextInput::make('billing_cycle_end_date')
-                            ->label('Dia de fechamento')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(31)
+                Section::make()
+                    ->components([
+                        /** Nome */
+                        TextInput::make('name')
+                            ->label('Nome')
+                            ->placeholder("Ex: Nubank Ultravioleta")
                             ->required(),
-                        TextInput::make('due_date')
-                            ->label('Dia de vencimento')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(31)
-                            ->required(),
-                    ]),
 
-                /** Banco */
-                Select::make('bank_account_id')
-                    ->label('Conta bancária')
-                    ->relationship('bankAccount', 'name')
-                    ->allowHtml()
-                    ->searchable()
-                    ->preload()
-                    ->getOptionLabelFromRecordUsing(BillableHelper::getBillableOptionLabel(...))
-                    ->live()
-                    ->afterStateUpdated(self::updateColor(...)),
+                        /** Limites (Total/Utilizado) */
+                        Grid::make()
+                            ->schema([
+                                CurrencyInput::make('total_limit')
+                                    ->label('Limite total')
+                                    ->prefix("R$")
+                                    ->required()
+                                    ->minValue(0)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(self::updateAvailableLimit(...)),
+                                CurrencyInput::make('used_limit')
+                                    ->label('Limite utilizado')
+                                    ->prefix("R$")
+                                    ->required()
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(self::updateAvailableLimit(...)),
+                            ]),
 
-                /** Cor */
-                ColorInput::make()->label("Cor de exibição")
+                        /** Limite disponivel */
+                        TextEntry::make('available_limit')
+                            ->label("Limite disponível")
+                            ->badge()
+                            ->money('BRL')
+                            ->default(0),
+
+                        /** Vencimentos */
+                        Grid::make()
+                            ->schema([
+                                TextInput::make('billing_cycle_end_date')
+                                    ->label('Dia de fechamento')
+                                    ->numeric()
+                                    ->minValue(1)
+                                    ->maxValue(31)
+                                    ->required(),
+                                TextInput::make('due_date')
+                                    ->label('Dia de vencimento')
+                                    ->numeric()
+                                    ->minValue(1)
+                                    ->maxValue(31)
+                                    ->required(),
+                            ]),
+
+                        /** Banco */
+                        Select::make('bank_account_id')
+                            ->label('Conta bancária')
+                            ->relationship('bankAccount', 'name')
+                            ->allowHtml()
+                            ->searchable()
+                            ->preload()
+                            ->getOptionLabelFromRecordUsing(BillableHelper::getBillableOptionLabel(...))
+                            ->live()
+                            ->afterStateUpdated(self::updateColor(...)),
+
+                        /** Cor */
+                        ColorInput::make()->label("Cor de exibição")
+                    ])
             ]);
     }
 }

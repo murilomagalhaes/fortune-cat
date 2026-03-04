@@ -2,20 +2,22 @@
 
 namespace App\Filament\Resources\Transactions\Tables;
 
-use App\Enums\TransactionRecurrencyType;
 use App\Enums\PaymentStatus;
+use App\Enums\TransactionRecurrencyType;
 use App\Enums\TransactionType;
-use App\Filament\Resources\Transactions\Schemas\TransactionForm;
 use App\Models\BankAccount;
 use App\Models\CreditCard;
 use App\Models\Transaction;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
@@ -43,25 +45,25 @@ class TransactionsTable
                 TextColumn::make('billable.name')
                     ->label('Carteira')
                     ->default('N/A')
-                    ->icon(fn(Transaction $record) => match ($record->billable ? get_class($record->billable) : null) {
+                    ->icon(fn (Transaction $record) => match ($record->billable ? get_class($record->billable) : null) {
                         BankAccount::class => Heroicon::BuildingOffice,
                         CreditCard::class => Heroicon::CreditCard,
                         default => null,
                     })
                     ->badge()
-                    ->color(fn(Transaction $record) => Color::hex(data_get($record, 'billable.color', 'secondary')))
+                    ->color(fn (Transaction $record) => Color::hex(data_get($record, 'billable.color', 'secondary')))
                     ->searchable(),
 
                 /** Data da transação  */
                 TextColumn::make('transaction_date')
-                    ->label("Data da transação")
-                    ->date("d/m/Y")
+                    ->label('Data da transação')
+                    ->date('d/m/Y')
                     ->sortable(),
 
                 /** Recorrência */
                 TextColumn::make('payments_count')
-                    ->label("Pagamentos")
-                    ->placeholder("N/A")
+                    ->label('Pagamentos')
+                    ->placeholder('N/A')
                     ->sortable()
                     ->formatStateUsing(function (Transaction $record) {
 
@@ -76,13 +78,12 @@ class TransactionsTable
 
                     }),
 
-
                 /** Valor */
                 TextColumn::make('total_amount')
-                    ->label("Total")
+                    ->label('Valor')
                     ->money('BRL')
                     ->alignEnd()
-                    ->color(fn(Transaction $record) => match ($record->transaction_type) {
+                    ->color(fn (Transaction $record) => match ($record->transaction_type) {
                         TransactionType::EXPENSE => Color::Red,
                         TransactionType::REVENUE => Color::Green,
                     })
@@ -91,13 +92,13 @@ class TransactionsTable
                 /** Valor */
                 TextColumn::make('payments_sum_paid_amount')
                     ->sum([
-                        'payments' => fn($query) => $query->where('status', '=', PaymentStatus::PAID)
+                        'payments' => fn ($query) => $query->where('status', '=', PaymentStatus::PAID),
                     ], 'paid_amount')
-                    ->label("Valor pago")
+                    ->label('Valor pago')
                     ->money('BRL')
                     ->placeholder('R$ 0,00')
                     ->alignEnd()
-                    ->color(fn(Transaction $record) => match ($record->transaction_type) {
+                    ->color(fn (Transaction $record) => match ($record->transaction_type) {
                         TransactionType::EXPENSE => Color::Red,
                         TransactionType::REVENUE => Color::Green,
                     })
@@ -106,26 +107,28 @@ class TransactionsTable
             ])
             ->filters([
                 SelectFilter::make('category')
-                    ->label("Categoria")
+                    ->label('Categoria')
                     ->searchable()
                     ->multiple()
                     ->preload()
                     ->relationship('category', 'name'),
             ])
             ->recordActions([
-                EditAction::make()->steps(TransactionForm::steps()),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ])
             ])
             ->groups([
                 Group::make('transaction_type')
-                    ->label("Tipo de transação")
+                    ->label('Tipo de transação')
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn(Transaction $record) => str($record->transaction_type->getLabel())->plural())
+                    ->getTitleFromRecordUsing(fn (Transaction $record) => str($record->transaction_type->getLabel())->plural())
                     ->titlePrefixedWithLabel(false),
                 Group::make('billable_type')
-                    ->label("Carteira")
+                    ->label('Carteira')
                     ->getTitleFromRecordUsing(function (Transaction $record) {
-                        if (!$record->billable) {
+                        if (! $record->billable) {
                             return 'N/A';
                         }
 
@@ -137,7 +140,7 @@ class TransactionsTable
 
                         return "$type - {$record->billable->name}";
                     })
-                    ->collapsible()
+                    ->collapsible(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

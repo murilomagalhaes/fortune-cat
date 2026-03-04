@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Transactions\Pages;
 
-use App\Filament\Resources\Transactions\Schemas\TransactionForm;
 use App\Filament\Resources\Transactions\TransactionResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -15,8 +14,7 @@ class ListTransactions extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label("Nova transação")
-                ->steps(TransactionForm::steps()),
+                ->label('Nova transação'),
         ];
     }
 }

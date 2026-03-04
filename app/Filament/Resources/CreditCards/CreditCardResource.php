@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\CreditCards;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Resources\CreditCards\Pages\CreateCreditCard;
+use App\Filament\Resources\CreditCards\Pages\EditCreditCard;
 use App\Filament\Resources\CreditCards\Pages\ListCreditCards;
 use App\Filament\Resources\CreditCards\Schemas\CreditCardForm;
 use App\Filament\Resources\CreditCards\Tables\CreditCardsTable;
@@ -18,11 +20,11 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class CreditCardResource extends Resource
 {
     protected static ?string $model = CreditCard::class;
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
     protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?string $label = 'Cartão de crédito';
+
     protected static ?string $pluralLabel = 'Cartões de crédito';
 
     protected static ?int $navigationSort = 2;
@@ -43,6 +45,8 @@ class CreditCardResource extends Resource
     {
         return [
             'index' => ListCreditCards::route('/'),
+            'create' => CreateCreditCard::route('/create'),
+            'edit' => EditCreditCard::route('/{record}/edit'),
         ];
     }
 

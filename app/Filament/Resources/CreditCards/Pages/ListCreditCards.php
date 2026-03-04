@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CreditCards\Pages;
 use App\Filament\Resources\CreditCards\CreditCardResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Support\Icons\Heroicon;
 
 class ListCreditCards extends ListRecords
 {
@@ -13,7 +14,8 @@ class ListCreditCards extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->icon(Heroicon::OutlinedCreditCard),
         ];
     }
 }

@@ -2,18 +2,24 @@
 
 namespace App\Enums;
 
+use Filament\Support\Contracts\HasIcon;
 use Filament\Support\Contracts\HasLabel;
 
-enum NavigationGroup implements HasLabel
+enum NavigationGroup implements HasLabel, HasIcon
 {
-    case TRANSACTIONS;
     case WALLETS;
 
     public function getLabel(): string
     {
         return match ($this) {
-            self::TRANSACTIONS => 'Transações',
             self::WALLETS => 'Carteiras',
+        };
+    }
+
+    public function getIcon(): ?string
+    {
+        return match ($this) {
+            self::WALLETS => 'heroicon-o-wallet',
         };
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TransactionPaymentType;
 use App\Enums\TransactionRecurrencyType;
 use App\Enums\PaymentStatus;
+use App\Enums\TransactionType;
 use App\Observers\TransactionPaymentObserver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -45,6 +46,10 @@ class TransactionPayment extends Model
 
     public function markAsPending(): bool
     {
+        if ($this->isPending()) {
+            return true;
+        }
+
         return $this->update([
             'status' => PaymentStatus::PENDING,
             'payment_date' => null,
@@ -81,14 +86,38 @@ class TransactionPayment extends Model
         return $this->transaction->recurrency_type === TransactionRecurrencyType::YEARLY;
     }
 
-    public function markAsPaid(?float $paidAmount = null, ?string $billableType = null, mixed $billableId = null): bool
+    public function isRevenue(): bool
     {
+        $this->loadMissing('transaction');
+
+        return $this->transaction->transaction_type === TransactionType::REVENUE;
+    }
+
+    public function isExpense(): bool
+    {
+        $this->loadMissing('transaction');
+
+        return $this->transaction->transaction_type === TransactionType::EXPENSE;
+
+    }
+
+    public function markAsPaid(
+        ?float             $paidAmount = null,
+        null|string|Carbon $paymentDate = null,
+        ?string            $billableType = null,
+        mixed              $billableId = null
+    ): bool
+    {
+        if ($this->isPaid()) {
+            return true;
+        }
+
         return $this->update([
-            'paid_amount' => $paidAmount,
+            'paid_amount' => $paidAmount ?: $this->amount,
             'billable_type' => $billableType,
             'billable_id' => $billableId,
             'status' => PaymentStatus::PAID,
-            'payment_date' => now()->format('Y-m-d'),
+            'payment_date' => $paymentDate ?: now()->format('Y-m-d'),
         ]);
     }
 

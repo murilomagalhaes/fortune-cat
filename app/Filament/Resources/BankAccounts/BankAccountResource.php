@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\BankAccounts;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Resources\BankAccounts\Pages\CreateBankAccount;
+use App\Filament\Resources\BankAccounts\Pages\EditBankAccount;
 use App\Filament\Resources\BankAccounts\Pages\ListBankAccounts;
 use App\Filament\Resources\BankAccounts\Schemas\BankAccountForm;
 use App\Filament\Resources\BankAccounts\Tables\BankAccountsTable;
@@ -18,11 +20,11 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class BankAccountResource extends Resource
 {
     protected static ?string $model = BankAccount::class;
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice;
 
     protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?string $label = 'Conta bancária';
+
     protected static ?string $pluralLabel = 'Contas bancárias';
 
     protected static ?int $navigationSort = 1;
@@ -39,11 +41,12 @@ class BankAccountResource extends Resource
         return BankAccountsTable::configure($table);
     }
 
-
     public static function getPages(): array
     {
         return [
             'index' => ListBankAccounts::route('/'),
+            'create' => CreateBankAccount::route('/create'),
+            'edit' => EditBankAccount::route('/{record}/edit'),
         ];
     }
 

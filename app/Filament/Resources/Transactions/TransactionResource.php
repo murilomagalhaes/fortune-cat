@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Transactions;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Resources\Transactions\Pages\CreateTransaction;
+use App\Filament\Resources\Transactions\Pages\EditTransaction;
 use App\Filament\Resources\Transactions\Pages\ListTransactions;
 use App\Filament\Resources\Transactions\Schemas\TransactionForm;
 use App\Filament\Resources\Transactions\Tables\TransactionsTable;
@@ -20,7 +22,7 @@ class TransactionResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowsUpDown;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCurrencyDollar;
 
     protected static ?string $label = 'Transação';
 
@@ -28,11 +30,14 @@ class TransactionResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    protected static null|string|\UnitEnum $navigationGroup = NavigationGroup::TRANSACTIONS;
 
     public static function form(Schema $schema): Schema
     {
-        return Wizard::make([TransactionForm::steps()]);
+        return $schema
+            ->columns(1)
+            ->components([
+                Wizard::make(TransactionForm::steps()),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -45,11 +50,12 @@ class TransactionResource extends Resource
         return parent::getEloquentQuery()->withCount(['payments']);
     }
 
-
     public static function getPages(): array
     {
         return [
             'index' => ListTransactions::route('/'),
+            'create' => CreateTransaction::route('/create'),
+            'edit' => EditTransaction::route('/{record}/edit'),
         ];
     }
 }
