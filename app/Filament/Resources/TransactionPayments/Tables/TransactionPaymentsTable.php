@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\TransactionPayments\Tables;
 
 use App\Enums\Month;
+use App\Enums\PaymentStatus;
 use App\Enums\TransactionPaymentType;
 use App\Enums\TransactionRecurrencyType;
-use App\Enums\PaymentStatus;
 use App\Enums\TransactionType;
 use App\Filament\Inputs\CurrencyInput;
 use App\Helpers\BillableHelper;
@@ -15,7 +15,6 @@ use App\Models\TransactionPayment;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\MorphToSelect;
 use Filament\Forms\Components\Select;
@@ -37,7 +36,6 @@ use Illuminate\Database\Query\Builder;
 
 class TransactionPaymentsTable
 {
-
     public static function configure(Table $table): Table
     {
         return $table
@@ -53,25 +51,27 @@ class TransactionPaymentsTable
                         return null;
                     })
                     ->label('Nome')
+                    ->searchable()
                     ->color('primary'),
 
                 /** Categoria */
                 TextColumn::make('transaction.category.name')
                     ->label('Categoria')
-                    ->placeholder("N/A")
+                    ->placeholder('N/A')
+                    ->searchable()
                     ->searchable(),
 
                 /** Carteira */
                 TextColumn::make('billable.name')
                     ->label('Carteira')
                     ->default('N/A')
-                    ->icon(fn(TransactionPayment $record) => match ($record->billable ? get_class($record->billable) : null) {
+                    ->icon(fn (TransactionPayment $record) => match ($record->billable ? get_class($record->billable) : null) {
                         BankAccount::class => Heroicon::BuildingOffice,
                         CreditCard::class => Heroicon::CreditCard,
                         default => null,
                     })
                     ->badge()
-                    ->color(fn(TransactionPayment $record) => Color::hex(data_get($record, 'billable.color', 'secondary')))
+                    ->color(fn (TransactionPayment $record) => Color::hex(data_get($record, 'billable.color', 'secondary')))
                     ->searchable(),
 
                 /** Cobrança */
@@ -79,7 +79,7 @@ class TransactionPaymentsTable
                     ->label('Data da cobrança')
                     ->width(1)
                     ->date('d/m/Y')
-                    ->icon(fn(TransactionPayment $record) => $record->transaction->payment_type === TransactionPaymentType::RECURRENT ? Heroicon::ArrowPath : null)
+                    ->icon(fn (TransactionPayment $record) => $record->transaction->payment_type === TransactionPaymentType::RECURRENT ? Heroicon::ArrowPath : null)
                     ->iconColor(Color::Blue)
                     ->iconPosition('after')
                     ->tooltip(function (TransactionPayment $record) {
@@ -101,14 +101,14 @@ class TransactionPaymentsTable
                     ->label('Pago em')
                     ->width(1)
                     ->date('d/m/Y')
-                    ->placeholder("Pendente")
+                    ->placeholder('Pendente')
                     ->sortable(),
 
                 /** Status */
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn(PaymentStatus $state) => match ($state) {
+                    ->color(fn (PaymentStatus $state) => match ($state) {
                         PaymentStatus::PENDING => 'warning',
                         PaymentStatus::PAID => 'success',
                     }),
@@ -120,48 +120,48 @@ class TransactionPaymentsTable
                     ->numeric()
                     ->sortable()
                     ->alignEnd()
-                    ->summarize([self::amountSummarizer("amount", "Valor")])
-                    ->color(fn(TransactionPayment $record) => $record->transaction->transaction_type === TransactionType::EXPENSE ? 'danger' : 'success'),
+                    ->summarize([self::amountSummarizer('amount', 'Valor')])
+                    ->color(fn (TransactionPayment $record) => $record->transaction->transaction_type === TransactionType::EXPENSE ? 'danger' : 'success'),
 
                 /** Valor Pago */
                 TextColumn::make('paid_amount')
                     ->label('Valor pago')
-                    ->placeholder("R$ 0,00")
+                    ->placeholder('R$ 0,00')
                     ->prefix('R$')
                     ->numeric()
                     ->sortable()
                     ->alignEnd()
-                    ->summarize([self::amountSummarizer("paid_amount", "Valor Pago")])
-                    ->color(fn(TransactionPayment $record) => $record->transaction->transaction_type === TransactionType::EXPENSE ? 'danger' : 'success'),
+                    ->summarize([self::amountSummarizer('paid_amount', 'Valor Pago')])
+                    ->color(fn (TransactionPayment $record) => $record->transaction->transaction_type === TransactionType::EXPENSE ? 'danger' : 'success'),
             ])
             ->filters([
                 Filter::make('billing_month_year')
                     ->schema([
                         FusedGroup::make([
                             Select::make('billing_month')
-                                ->placeholder("Mês")
+                                ->placeholder('Mês')
                                 ->searchable()
                                 ->preload()
                                 ->default(now()->month)
-                                ->placeholder("Mês")
+                                ->placeholder('Mês')
                                 ->required()
                                 ->selectablePlaceholder(false)
                                 ->options(Month::class),
                             TextInput::make('billing_year')
-                                ->placeholder("Ano")
+                                ->placeholder('Ano')
                                 ->default(now()->year)
                                 ->required()
-                                ->placeholder("Ano")
-                                ->numeric()
+                                ->placeholder('Ano')
+                                ->numeric(),
                         ])
-                            ->label("Mês / Ano")
-                            ->columns()
+                            ->label('Mês / Ano')
+                            ->columns(),
                     ])
                     ->indicateUsing(function (array $data) {
 
                         [$month, $year] = array_values($data);
 
-                        return Indicator::make($month && $year ? Month::from($month)->getLabel() . ' ' . $year : null)
+                        return Indicator::make($month && $year ? Month::from($month)->getLabel().' '.$year : null)
                             ->removable(false);
 
                     })
@@ -173,12 +173,12 @@ class TransactionPaymentsTable
 
                     }),
                 SelectFilter::make('transaction.transaction_type')
-                    ->label("Tipo de pagamento")
+                    ->label('Tipo de pagamento')
                     ->searchable()
                     ->options(TransactionType::class)
                     ->preload(),
                 SelectFilter::make('transaction.category')
-                    ->label("Categoria")
+                    ->label('Categoria')
                     ->searchable()
                     ->multiple()
                     ->preload()
@@ -195,15 +195,15 @@ class TransactionPaymentsTable
             })
             ->groups([
                 Group::make('transaction.transaction_type')
-                    ->label("Tipo de transação")
+                    ->label('Tipo de transação')
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn(TransactionPayment $record) => str($record->transaction->transaction_type->getLabel())->plural())
+                    ->getTitleFromRecordUsing(fn (TransactionPayment $record) => str($record->transaction->transaction_type->getLabel())->plural())
                     ->titlePrefixedWithLabel(false),
                 Group::make('billable_type')
-                    ->label("Carteira")
-                    ->scopeQueryByKeyUsing(fn(EloquentBuilder $query, string $key) => $query->where('transaction_payments.billable_type', $key))
+                    ->label('Carteira')
+                    ->scopeQueryByKeyUsing(fn (EloquentBuilder $query, ?string $key) => $query->where('transaction_payments.billable_type', $key))
                     ->getTitleFromRecordUsing(function (TransactionPayment $record) {
-                        if (!$record->billable) {
+                        if (! $record->billable) {
                             return 'N/A';
                         }
 
@@ -215,29 +215,29 @@ class TransactionPaymentsTable
 
                         return "$type - {$record->billable->name}";
                     })
-                    ->collapsible()
+                    ->collapsible(),
             ])
             ->recordActions([
 
                 /** Estornar pagamento */
                 Action::make('reverse-payment')
                     ->requiresConfirmation()
-                    ->label("Estornar")
-                    ->visible(fn(TransactionPayment $record) => $record->isPaid())
+                    ->label('Estornar')
+                    ->visible(fn (TransactionPayment $record) => $record->isPaid())
                     ->icon(Heroicon::ArrowUturnLeft)
                     ->color(Color::Orange)
-                    ->successNotificationTitle("Pagamento estornado com sucesso!")
-                    ->action(fn(TransactionPayment $record) => $record->markAsPending()),
+                    ->successNotificationTitle('Pagamento estornado com sucesso!')
+                    ->action(fn (TransactionPayment $record) => $record->markAsPending()),
 
                 /** Confirmar pagamento */
                 Action::make('confirm-payment')
                     ->modal()
-                    ->label("Confirmar")
-                    ->visible(fn(TransactionPayment $record) => $record->isPending())
+                    ->label('Confirmar')
+                    ->visible(fn (TransactionPayment $record) => $record->isPending())
                     ->color(Color::Green)
-                    ->successNotificationTitle("Pagamento confirmado com sucesso!")
+                    ->successNotificationTitle('Pagamento confirmado com sucesso!')
                     ->icon(Heroicon::CheckCircle)
-                    ->fillForm(fn(TransactionPayment $record) => [
+                    ->fillForm(fn (TransactionPayment $record) => [
                         'paid_amount' => $record->amount,
                         'payment_date' => now(),
                         'billable_type' => $record->billable_type,
@@ -247,34 +247,33 @@ class TransactionPaymentsTable
 
                         // Cobrado em
                         MorphToSelect::make('billable')
-                            ->label("Cobrado em")
+                            ->label('Cobrado em')
                             ->native(false)
                             ->types(
-                                array_map(fn($type) => MorphToSelect\Type::make($type)
+                                array_map(fn ($type) => MorphToSelect\Type::make($type)
                                     ->label(match ($type) {
-                                        CreditCard::class => "Cartão de crédito",
-                                        BankAccount::class => "Conta Bancária (PIX / Transferência)"
+                                        CreditCard::class => 'Cartão de crédito',
+                                        BankAccount::class => 'Conta Bancária (PIX / Transferência)'
                                     })
                                     ->titleAttribute('name')
                                     ->getOptionLabelFromRecordUsing(BillableHelper::getBillableOptionLabel(...)),
                                     [CreditCard::class, BankAccount::class])
                             )
-                            ->modifyKeySelectUsing(fn(Select $select): Select => $select->searchable()->preload()->allowHtml()),
+                            ->modifyKeySelectUsing(fn (Select $select): Select => $select->searchable()->preload()->allowHtml()),
 
                         /** Data de pagamento */
                         DatePicker::make('payment_date')
                             ->label('Data de pagamento')
                             ->required(),
 
-
                         /** Valor Pago */
                         CurrencyInput::make('paid_amount')
                             ->label('Valor pago')
-                            ->prefix("R$")
+                            ->prefix('R$')
                             ->rules(['required', 'numeric', 'min:0.01']),
 
                     ])
-                    ->action(fn(array $data, TransactionPayment $record) => $record->markAsPaid(
+                    ->action(fn (array $data, TransactionPayment $record) => $record->markAsPaid(
                         paidAmount: $data['paid_amount'],
                         paymentDate: $data['payment_date'],
                         billableType: $data['billable_type'],
@@ -287,12 +286,12 @@ class TransactionPaymentsTable
                     /** Confirmar selecionados */
                     BulkAction::make('bulk-confirm-payment')
                         ->icon(Heroicon::CheckCircle)
-                        ->label("Confirmar")
+                        ->label('Confirmar')
                         ->color(Color::Green)
-                        ->successNotificationTitle("Pagamentos confirmados com sucesso!")
+                        ->successNotificationTitle('Pagamentos confirmados com sucesso!')
                         ->requiresConfirmation()
-                        ->modalHeading("Confirmar pagamentos")
-                        ->action(fn(Collection $records) => $records->each(fn(TransactionPayment $record) => $record->markAsPaid(
+                        ->modalHeading('Confirmar pagamentos')
+                        ->action(fn (Collection $records) => $records->each(fn (TransactionPayment $record) => $record->markAsPaid(
                             billableType: $record->billable_type,
                             billableId: $record->billable_id,
                         ))),
@@ -300,12 +299,12 @@ class TransactionPaymentsTable
                     /** Estornar selecionados */
                     BulkAction::make('bulk-reverse-payment')
                         ->icon(Heroicon::ArrowUturnLeft)
-                        ->label("Estornar")
+                        ->label('Estornar')
                         ->color(Color::Orange)
-                        ->successNotificationTitle("Pagamentos estornados com sucesso!")
+                        ->successNotificationTitle('Pagamentos estornados com sucesso!')
                         ->requiresConfirmation()
-                        ->modalHeading("Estornar pagamentos")
-                        ->action(fn(Collection $records) => $records->each(fn(TransactionPayment $record) => $record->markAsPending())),
+                        ->modalHeading('Estornar pagamentos')
+                        ->action(fn (Collection $records) => $records->each(fn (TransactionPayment $record) => $record->markAsPending())),
                 ]),
             ])
             ->stackedOnMobile();
@@ -334,5 +333,4 @@ class TransactionPaymentsTable
             ->label($label);
 
     }
-
 }

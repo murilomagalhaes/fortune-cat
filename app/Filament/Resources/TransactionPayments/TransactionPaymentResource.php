@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\TransactionPayments;
 
-use App\Enums\NavigationGroup;
 use App\Filament\Resources\TransactionPayments\Pages\ListTransactionPayments;
 use App\Filament\Resources\TransactionPayments\Tables\TransactionPaymentsTable;
+use App\Filament\Resources\TransactionPayments\Widgets\AmountsByCategoryChart;
+use App\Filament\Resources\TransactionPayments\Widgets\AmountsOverview;
+use App\Filament\Resources\TransactionPayments\Widgets\ExpensesByBillableChart;
 use App\Models\TransactionPayment;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -23,7 +25,6 @@ class TransactionPaymentResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'payment_number';
 
-
     protected static ?int $navigationSort = 1;
 
     public static function table(Table $table): Table
@@ -34,6 +35,15 @@ class TransactionPaymentResource extends Resource
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return parent::getEloquentQuery()->with(['transaction.category']);
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            AmountsOverview::class,
+            ExpensesByBillableChart::class,
+            AmountsByCategoryChart::class,
+        ];
     }
 
     public static function getPages(): array
