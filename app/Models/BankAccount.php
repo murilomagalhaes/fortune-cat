@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BankAccountType;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -14,6 +15,8 @@ class BankAccount extends Model
     use HasFactory, SoftDeletes;
 
     protected $guarded = ['id', 'created_at', 'updated_at', 'deleted_at'];
+
+    protected $appends = ['title'];
 
     protected function casts(): array
     {
@@ -31,6 +34,11 @@ class BankAccount extends Model
     public function transactions(): MorphMany
     {
         return $this->morphMany(Transaction::class, 'billable');
+    }
+
+    public function title(): Attribute
+    {
+        return new Attribute(get: fn() => "[Conta] {$this->name}");
     }
 
 

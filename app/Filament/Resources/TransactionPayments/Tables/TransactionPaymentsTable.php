@@ -8,6 +8,8 @@ use App\Enums\TransactionPaymentType;
 use App\Enums\TransactionRecurrencyType;
 use App\Enums\TransactionType;
 use App\Filament\Inputs\CurrencyInput;
+use App\Filament\Resources\TransactionPayments\Widgets\AmountsOverview;
+use App\Filament\Resources\Transactions\Pages\EditTransaction;
 use App\Helpers\BillableHelper;
 use App\Models\BankAccount;
 use App\Models\CreditCard;
@@ -25,6 +27,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
@@ -39,6 +42,8 @@ class TransactionPaymentsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->heading("Pagamentos")
+            ->paginated(false)
             ->columns([
 
                 /** Nome */
@@ -52,6 +57,7 @@ class TransactionPaymentsTable
                     })
                     ->label('Nome')
                     ->searchable()
+                    ->url(fn (TransactionPayment $record) => route(EditTransaction::getRouteName(), [$record->transaction->id]))
                     ->color('primary'),
 
                 /** Categoria */
@@ -120,7 +126,7 @@ class TransactionPaymentsTable
                     ->numeric()
                     ->sortable()
                     ->alignEnd()
-                    ->summarize([self::amountSummarizer('amount', 'Valor')])
+                    ->summarize([self::amountSummarizer('amount', 'Saldo')])
                     ->color(fn (TransactionPayment $record) => $record->transaction->transaction_type === TransactionType::EXPENSE ? 'danger' : 'success'),
 
                 /** Valor Pago */
@@ -157,14 +163,6 @@ class TransactionPaymentsTable
                             ->label('Mês / Ano')
                             ->columns(),
                     ])
-                    ->indicateUsing(function (array $data) {
-
-                        [$month, $year] = array_values($data);
-
-                        return Indicator::make($month && $year ? Month::from($month)->getLabel().' '.$year : null)
-                            ->removable(false);
-
-                    })
                     ->modifyBaseQueryUsing(function (EloquentBuilder $query, array $data) {
 
                         [$month, $year] = array_values($data);

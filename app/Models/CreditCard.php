@@ -16,7 +16,7 @@ class CreditCard extends Model
 
     protected $guarded = ['id', 'created_at', 'updated_at', 'deleted_at'];
 
-    protected $appends = ['available_limit'];
+    protected $appends = ['available_limit', 'title'];
 
     protected function casts(): array
     {
@@ -46,5 +46,10 @@ class CreditCard extends Model
         return Attribute::make(get: function () {
             return (float)$this->total_limit - (float)$this->used_limit;
         });
+    }
+
+    public function title(): Attribute
+    {
+        return new Attribute(get: fn() => "[Cartão] {$this->name}");
     }
 }

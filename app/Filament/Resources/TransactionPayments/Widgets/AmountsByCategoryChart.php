@@ -39,8 +39,8 @@ class AmountsByCategoryChart extends ChartWidget
             ))
             ->sortBy(fn ($v) => $v);
 
-        $colors = $grouped->map(fn ($v) => $v >= 0 ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)')->values()->toArray();
-        $borders = $grouped->map(fn ($v) => $v >= 0 ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)')->values()->toArray();
+        $colors = $grouped->map(fn ($v) => $v >= 0 ? 'rgba(34, 197, 94)' : 'rgba(239, 68, 68)')->values()->toArray();
+        $borders = $grouped->map(fn ($v) => $v >= 0 ? 'rgba(34, 197, 94)' : 'rgba(239, 68, 68)')->values()->toArray();
 
         return [
             'datasets' => [

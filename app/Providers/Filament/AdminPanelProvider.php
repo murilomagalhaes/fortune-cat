@@ -26,7 +26,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->brandName('Budget Manager')
+            ->brandName('Fortune cat')
             ->login()
             ->topNavigation()
             ->colors([

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\TransactionPayments\Widgets;
 use App\Enums\TransactionType;
 use App\Filament\Resources\TransactionPayments\Pages\ListTransactionPayments;
 use App\Models\TransactionPayment;
+use Filament\Support\Colors\Color;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
@@ -36,17 +37,26 @@ class ExpensesByBillableChart extends ChartWidget
             ->get();
 
         $grouped = $payments
-            ->groupBy(fn (TransactionPayment $p) => $p->billable?->name ?? 'N/A')
-            ->map(fn ($group) => round(-$group->sum('amount'), 2))
-            ->sortBy(fn ($v) => $v);
+            ->groupBy(fn (TransactionPayment $p) => $p->billable?->title ?? 'N/A')
+            ->map(fn ($group) => round($group->sum('amount'), 2))
+            ->sortByDesc(fn ($v) => $v);
+
+
+        $billableColors = $payments
+            ->sortByDesc(fn ($p) => $p->amount)
+            ->groupBy(fn (TransactionPayment $p) => $p->billable)
+            ->map(fn ($group) => $group->first()->billable?->color ?? '#CCCCCC')
+            ->values()
+            ->toArray();
+
 
         return [
             'datasets' => [
                 [
                     'label' => 'Despesas',
                     'data' => $grouped->values()->toArray(),
-                    'backgroundColor' => array_fill(0, $grouped->count(), 'rgba(239, 68, 68, 0.8)'),
-                    'borderColor' => array_fill(0, $grouped->count(), 'rgba(239, 68, 68, 1)'),
+                    'backgroundColor' => $billableColors,
+                    'borderColor' => $billableColors,
                     'borderWidth' => 1,
                 ],
             ],

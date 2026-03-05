@@ -27,7 +27,7 @@
 
 
     <div class="flex flex-col font-bold text-sm space-y-[-.4em]">
-        <span>fortune</span>
+        <span>Fortune</span>
         <span class="text-gray-700 dark:text-gray-200">cat</span>
     </div>
 
