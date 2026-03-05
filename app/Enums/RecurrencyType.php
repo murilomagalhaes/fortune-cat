@@ -5,7 +5,7 @@ namespace App\Enums;
 use Filament\Support\Contracts\HasLabel;
 use Illuminate\Contracts\Support\Htmlable;
 
-enum TransactionRecurrencyType: string implements HasLabel
+enum RecurrencyType: string implements HasLabel
 {
     case MONTHLY = 'MONTHLY';
     case YEARLY = 'YEARLY';

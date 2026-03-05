@@ -3,99 +3,96 @@
 namespace App\Observers;
 
 use App\Enums\PaymentStatus;
-use App\Enums\TransactionRecurrencyType;
+use App\Enums\RecurrencyType;
 use App\Models\BankAccount;
 use App\Models\CreditCard;
-use App\Models\TransactionPayment;
+use App\Models\Payment;
 
 class TransactionPaymentObserver
 {
-    public function created(TransactionPayment $transactionPayment): void
+
+    public function updated(Payment $payment): void
     {
+        $payment->load('transaction');
 
-    }
-
-    public function updated(TransactionPayment $transactionPayment): void
-    {
-        $transactionPayment->load('transaction');
-
-        if ($transactionPayment->wasChanged(['billable_type', 'billable_id'])) {
-            $transactionPayment->transaction->updateQuietly([
-                'billable_type' => $transactionPayment->billable_type,
-                'billable_id' => $transactionPayment->billable_id,
+        if ($payment->wasChanged(['billable_type', 'billable_id'])) {
+            $payment->transaction->updateQuietly([
+                'billable_type' => $payment->billable_type,
+                'billable_id' => $payment->billable_id,
             ]);
         }
 
-        if ($transactionPayment->wasChanged('status')) {
-            $this->handleRecurrency($transactionPayment);
-            $this->handleBalanceUpdate($transactionPayment);
+        if ($payment->wasChanged('status')) {
+            $this->handleRecurrency($payment);
+            $this->handleBalanceUpdate($payment);
         }
     }
 
-    private function handleBalanceUpdate(TransactionPayment $transactionPayment): void
+    private function handleBalanceUpdate(Payment $payment): void
     {
-        $transactionPayment->loadMissing('billable');
+        $payment->loadMissing('billable');
 
         $getBankAccountUpdatedBalance = fn(?float $currentBalance) => match (true) {
-            $transactionPayment->isPaid() && $transactionPayment->isRevenue() => $currentBalance + $transactionPayment->paid_amount,
-            $transactionPayment->isPaid() && $transactionPayment->isExpense() => $currentBalance - $transactionPayment->paid_amount,
-            $transactionPayment->isPending() && $transactionPayment->isRevenue() => $currentBalance - $transactionPayment->paid_amount,
-            $transactionPayment->isPending() && $transactionPayment->isExpense() => $currentBalance + $transactionPayment->paid_amount,
+            $payment->isPaid() && $payment->isRevenue() => $currentBalance + $payment->paid_amount,
+            $payment->isPaid() && $payment->isExpense() => $currentBalance - $payment->paid_amount,
+            $payment->isPending() && $payment->isRevenue() => $currentBalance - $payment->paid_amount,
+            $payment->isPending() && $payment->isExpense() => $currentBalance + $payment->paid_amount,
             default => $currentBalance,
         };
 
-        if ($transactionPayment->billable instanceof BankAccount) {
-            $transactionPayment->billable->update(['balance' => $getBankAccountUpdatedBalance($transactionPayment->billable->balance)]);
+        if ($payment->billable instanceof BankAccount) {
+            $payment->billable->update(['balance' => $getBankAccountUpdatedBalance($payment->billable->balance)]);
         }
 
-        if ($transactionPayment->billable instanceof CreditCard) {
+        if ($payment->billable instanceof CreditCard) {
 
             $usedLimit = match (true) {
-                $transactionPayment->isPaid() => $transactionPayment->billable->used_limit - $transactionPayment->paid_amount,
-                $transactionPayment->isPending() => $transactionPayment->billable->used_limit + $transactionPayment->paid_amount,
-                default => $transactionPayment->billable->used_limit,
+                $payment->isPaid() => $payment->billable->used_limit - $payment->paid_amount,
+                $payment->isPending() => $payment->billable->used_limit + $payment->paid_amount,
+                default => $payment->billable->used_limit,
             };
 
-            $transactionPayment->billable->update(['used_limit' => $usedLimit]);
+            $payment->billable->update(['used_limit' => $usedLimit]);
 
-            if ($transactionPayment->billable->bank_account_id) {
-                $bankAccount = BankAccount::find($transactionPayment->billable->bank_account_id);
+            if ($payment->billable->bank_account_id) {
+                $bankAccount = BankAccount::find($payment->billable->bank_account_id);
                 $bankAccount->update(['balance' => $getBankAccountUpdatedBalance($bankAccount->balance)]);
             }
 
         }
     }
 
-    private function handleRecurrency(TransactionPayment $transactionPayment): void
+    private function handleRecurrency(Payment $payment): void
     {
-        if (!$transactionPayment->transaction->isRecurring()) {
+        if (!$payment->transaction->isRecurring()) {
             return;
         }
 
-        if ($transactionPayment->isPaid()) {
-            $billingDate = match ($transactionPayment->transaction->recurrency_type) {
-                TransactionRecurrencyType::YEARLY => $transactionPayment->billing_date
+        if ($payment->isPaid()) {
+
+            $billingDate = match ($payment->transaction->recurrency_type) {
+                RecurrencyType::YEARLY => $payment->billing_date
                     ->startOfYear()
                     ->addYear()
-                    ->month($transactionPayment->transaction->recurring_month)
-                    ->day($transactionPayment->transaction->recurring_day),
-                default => $transactionPayment->billing_date
+                    ->month($payment->transaction->recurring_month)
+                    ->day($payment->transaction->recurring_day),
+                default => $payment->billing_date
                     ->startOfMonth()
                     ->addMonth()
-                    ->day($transactionPayment->transaction->recurring_day),
+                    ->day($payment->transaction->recurring_day),
             };
 
-            TransactionPayment::query()
+            Payment::query()
                 ->firstOrCreate(
                     [
-                        'transaction_id' => $transactionPayment->transaction_id,
-                        'payment_number' => $transactionPayment->payment_number + 1,
+                        'transaction_id' => $payment->transaction_id,
+                        'payment_number' => $payment->payment_number + 1,
                     ],
                     [
-                        'amount' => $transactionPayment->amount,
+                        'amount' => $payment->amount,
                         'billing_date' => $billingDate,
-                        'billable_type' => $transactionPayment->billable_type,
-                        'billable_id' => $transactionPayment->billable_id,
+                        'billable_type' => $payment->billable_type,
+                        'billable_id' => $payment->billable_id,
                         'status' => PaymentStatus::PENDING,
                     ]
                 );

@@ -5,7 +5,7 @@ namespace App\Enums;
 use Filament\Support\Contracts\HasLabel;
 use Illuminate\Contracts\Support\Htmlable;
 
-enum TransactionPaymentType: string implements HasLabel
+enum PaymentType: string implements HasLabel
 {
     case SINGLE = 'SINGLE';
     case INSTALLMENTS = 'INSTALLMENTS';

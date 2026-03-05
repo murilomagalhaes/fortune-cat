@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\TransactionPayments\Widgets;
 
 use App\Enums\TransactionType;
-use App\Models\TransactionPayment;
+use App\Models\Payment;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
@@ -25,15 +25,15 @@ class AmountsByCategoryChart extends ChartWidget
         $year = data_get($this->tableFilters, 'billing_month_year.billing_year', now()->year);
         $month = data_get($this->tableFilters, 'billing_month_year.billing_month', now()->month);
 
-        $payments = TransactionPayment::query()
+        $payments = Payment::query()
             ->filterBillingYearMonth($year, $month)
             ->with(['transaction.category'])
             ->get();
 
         $grouped = $payments
-            ->groupBy(fn (TransactionPayment $p) => $p->transaction->category?->name ?? 'Sem categoria')
+            ->groupBy(fn (Payment $p) => $p->transaction->category?->name ?? 'Sem categoria')
             ->map(fn ($group) => round(
-                $group->sum(fn (TransactionPayment $p) => $p->transaction->transaction_type === TransactionType::REVENUE ? $p->amount : -$p->amount
+                $group->sum(fn (Payment $p) => $p->transaction->transaction_type === TransactionType::REVENUE ? $p->amount : -$p->amount
                 ),
                 2
             ))

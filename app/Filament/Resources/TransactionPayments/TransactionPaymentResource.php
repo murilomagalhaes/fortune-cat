@@ -7,7 +7,7 @@ use App\Filament\Resources\TransactionPayments\Tables\TransactionPaymentsTable;
 use App\Filament\Resources\TransactionPayments\Widgets\AmountsByCategoryChart;
 use App\Filament\Resources\TransactionPayments\Widgets\AmountsOverview;
 use App\Filament\Resources\TransactionPayments\Widgets\ExpensesByBillableChart;
-use App\Models\TransactionPayment;
+use App\Models\Payment;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -15,7 +15,7 @@ use Filament\Tables\Table;
 
 class TransactionPaymentResource extends Resource
 {
-    protected static ?string $model = TransactionPayment::class;
+    protected static ?string $model = Payment::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowsUpDown;
 

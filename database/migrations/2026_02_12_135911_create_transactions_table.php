@@ -32,7 +32,7 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('transaction_payments');
+        Schema::dropIfExists('payments');
         Schema::dropIfExists('transactions');
     }
 };

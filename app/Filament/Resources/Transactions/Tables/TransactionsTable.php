@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Transactions\Tables;
 
 use App\Enums\PaymentStatus;
-use App\Enums\TransactionRecurrencyType;
+use App\Enums\RecurrencyType;
 use App\Enums\TransactionType;
 use App\Models\BankAccount;
 use App\Models\CreditCard;
@@ -71,8 +71,8 @@ class TransactionsTable
                         $recurringMonth = data_get($record, 'recurring_month');
 
                         return match (data_get($record, 'recurrency_type')) {
-                            TransactionRecurrencyType::MONTHLY => "Todo dia {$recurringDay}",
-                            TransactionRecurrencyType::YEARLY => "Todo dia {$recurringDay} do mês de {$recurringMonth}",
+                            RecurrencyType::MONTHLY => "Todo dia {$recurringDay}",
+                            RecurrencyType::YEARLY => "Todo dia {$recurringDay} do mês de {$recurringMonth}",
                             default => $record->payments_count
                         };
 

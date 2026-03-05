@@ -33,7 +33,7 @@ class CreditCard extends Model
 
     public function transactionItems(): MorphMany
     {
-        return $this->morphMany(TransactionPayment::class, 'billable');
+        return $this->morphMany(Payment::class, 'billable');
     }
 
     public function transactions(): MorphMany

@@ -23,8 +23,8 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->default()
-            ->id('admin')
-            ->path('admin')
+            ->id('app')
+            ->path('app')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->brandName('Fortune cat')
             ->login()

@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\TransactionPaymentType;
+use App\Enums\PaymentType;
 use App\Enums\TransactionType;
 use App\Models\Transaction;
 use App\Models\TransactionCategory;
@@ -22,7 +22,7 @@ class TransactionFactory extends Factory
             'transaction_type' => TransactionType::EXPENSE,
             'total_amount' => fake()->randomFloat(2, 10, 5000),
             'transaction_date' => fake()->date(),
-            'payment_type' => TransactionPaymentType::SINGLE,
+            'payment_type' => PaymentType::SINGLE,
             'recurrency_type' => null,
             'transaction_category_id' => TransactionCategory::factory(),
         ];

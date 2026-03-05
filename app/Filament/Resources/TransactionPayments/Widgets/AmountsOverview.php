@@ -4,8 +4,8 @@ namespace App\Filament\Resources\TransactionPayments\Widgets;
 
 use App\Enums\TransactionType;
 use App\Filament\Resources\TransactionPayments\Pages\ListTransactionPayments;
-use App\Models\TransactionPayment;
-use Filament\Support\Icons\Heroicon;
+use App\Models\Payment;
+use Carbon\Carbon;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -28,31 +28,45 @@ class AmountsOverview extends BaseWidget
         $year = data_get($this->tableFilters, 'billing_month_year.billing_year');
         $month = data_get($this->tableFilters, 'billing_month_year.billing_month');
 
-        $query =  TransactionPayment::query()
-            ->filterBillingYearMonth($year, $month);
+        $selectedDate = Carbon::createFromDate($year ?? now()->year, $month ?? now()->month, 1);
 
-        $totalRevenue = (clone $query)
-            ->whereHas('transaction', fn ($q) => $q->where('transaction_type', TransactionType::REVENUE->value))
-            ->sum('amount');
+        $chartRevenues = [];
+        $chartExpenses = [];
+        $chartBalances = [];
 
-        $totalExpense = (clone $query)
-            ->whereHas('transaction', fn ($q) => $q->where('transaction_type', TransactionType::EXPENSE->value))
-            ->sum('amount');
+        for ($i = 5; $i >= 0; $i--) {
+            $date = $selectedDate->copy()->subMonths($i);
+            $periodQuery = Payment::query()->filterBillingYearMonth($date->year, $date->month);
 
-        $balance = $totalRevenue - $totalExpense;
+            $revenue = (clone $periodQuery)
+                ->whereHas('transaction', fn ($q) => $q->where('transaction_type', TransactionType::REVENUE->value))
+                ->sum('amount');
+
+            $expense = (clone $periodQuery)
+                ->whereHas('transaction', fn ($q) => $q->where('transaction_type', TransactionType::EXPENSE->value))
+                ->sum('amount');
+
+            $chartRevenues[] = $revenue;
+            $chartExpenses[] = $expense;
+            $chartBalances[] = $revenue - $expense;
+        }
+
+        $totalRevenue = last($chartRevenues);
+        $totalExpense = last($chartExpenses);
+        $balance = last($chartBalances);
 
         return [
             Stat::make('Receitas', 'R$ '.number_format($totalRevenue, 2, ',', '.'))
                 ->description('Total de receitas')
-                ->chart([7, 2, 10, 3, 15, 4, 17])
+                ->chart($chartRevenues)
                 ->color('success'),
             Stat::make('Despesas', 'R$ '.number_format(abs($totalExpense), 2, ',', '.'))
                 ->description('Total de despesas')
-                ->chart([7, 2, 10, 3, 15, 4, 17])
+                ->chart($chartExpenses)
                 ->color('danger'),
             Stat::make('Saldo', 'R$ '.number_format($balance, 2, ',', '.'))
                 ->description('Saldo atual')
-                ->chart([7, 2, 10, 3, 15, 4, 17])
+                ->chart($chartBalances)
                 ->color($balance >= 0 ? 'success' : 'danger'),
         ];
     }

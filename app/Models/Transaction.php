@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\Enums\TransactionPaymentType;
-use App\Enums\TransactionRecurrencyType;
+use App\Enums\PaymentType;
+use App\Enums\RecurrencyType;
 use App\Enums\TransactionType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,8 +24,8 @@ class Transaction extends Model
     {
         return [
             'transaction_type' => TransactionType::class,
-            'payment_type' => TransactionPaymentType::class,
-            'recurrency_type' => TransactionRecurrencyType::class,
+            'payment_type' => PaymentType::class,
+            'recurrency_type' => RecurrencyType::class,
             'transaction_date' => 'date:Y-m-d',
         ];
     }
@@ -37,7 +37,7 @@ class Transaction extends Model
 
     public function payments(): HasMany
     {
-        return $this->hasMany(TransactionPayment::class);
+        return $this->hasMany(Payment::class);
     }
 
     public function billable(): MorphTo
@@ -47,7 +47,7 @@ class Transaction extends Model
 
     public function isRecurring(): bool
     {
-        return $this->payment_type === TransactionPaymentType::RECURRENT;
+        return $this->payment_type === PaymentType::RECURRENT;
     }
 
 

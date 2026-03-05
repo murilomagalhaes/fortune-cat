@@ -5,17 +5,19 @@ namespace App\Filament\Resources\Transactions\Schemas;
 use App\DTO\TransactionDTO;
 use App\Enums\Month;
 use App\Enums\PaymentStatus;
-use App\Enums\TransactionPaymentType;
-use App\Enums\TransactionRecurrencyType;
+use App\Enums\PaymentType;
+use App\Enums\RecurrencyType;
 use App\Enums\TransactionType;
 use App\Filament\Inputs\CurrencyInput;
+use App\Filament\Resources\BankAccounts\Schemas\BankAccountForm;
+use App\Filament\Resources\CreditCards\Schemas\CreditCardForm;
 use App\Helpers\BillableHelper;
 use App\Helpers\CurrencyHelper;
 use App\Models\BankAccount;
 use App\Models\CreditCard;
 use App\Models\Transaction;
 use App\Models\TransactionCategory;
-use App\Models\TransactionPayment;
+use App\Models\Payment;
 use App\Services\TransactionsService;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
@@ -31,6 +33,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Number;
 
 class TransactionForm
@@ -57,7 +60,7 @@ class TransactionForm
 
                 [$type, $name] = [$get->enum('transaction_type', TransactionType::class), $get('name')];
 
-                return $type && $name ? $type->getLabel().': '.$name : null;
+                return $type && $name ? $type->getLabel() . ': ' . $name : null;
 
             })
             ->schema([
@@ -108,10 +111,10 @@ class TransactionForm
 
                 $value = Number::currency(CurrencyHelper::stringToFloat($get('total_amount')), 'BRL', 'pt_BR', 2);
 
-                return match ($get->enum('payment_type', TransactionPaymentType::class)) {
-                    TransactionPaymentType::SINGLE => "1x de $value",
-                    TransactionPaymentType::INSTALLMENTS => "$value - Parcelado",
-                    TransactionPaymentType::RECURRENT => $value.' - '.$get->enum('recurrency_type', TransactionRecurrencyType::class)?->getLabel() ?? 'N/A',
+                return match ($get->enum('payment_type', PaymentType::class)) {
+                    PaymentType::SINGLE => "1x de $value",
+                    PaymentType::INSTALLMENTS => "$value - Parcelado",
+                    PaymentType::RECURRENT => $value . ' - ' . $get->enum('recurrency_type', RecurrencyType::class)?->getLabel() ?? 'N/A',
 
                 };
             })
@@ -122,8 +125,8 @@ class TransactionForm
                         /** Tipo de pagamento */
                         Radio::make('payment_type')
                             ->label('Tipo de pagamento')
-                            ->options(TransactionPaymentType::class)
-                            ->default(TransactionPaymentType::SINGLE)
+                            ->options(PaymentType::class)
+                            ->default(PaymentType::SINGLE)
                             ->hiddenOn(['edit'])
                             ->inline()
                             ->live()
@@ -144,10 +147,10 @@ class TransactionForm
                         /** Recorrência */
                         Select::make('recurrency_type')
                             ->label('Recorrência')
-                            ->options(TransactionRecurrencyType::class)
-                            ->default(TransactionRecurrencyType::MONTHLY)
+                            ->options(RecurrencyType::class)
+                            ->default(RecurrencyType::MONTHLY)
                             ->native(false)
-                            ->visible(fn (Get $get) => $get('payment_type') === TransactionPaymentType::RECURRENT)
+                            ->visible(fn(Get $get) => $get('payment_type') === PaymentType::RECURRENT)
                             ->live()
                             ->required(),
 
@@ -158,7 +161,7 @@ class TransactionForm
                             ->default(now()),
 
                         Grid::make()
-                            ->visible(fn (Get $get) => $get('payment_type') === TransactionPaymentType::RECURRENT)
+                            ->visible(fn(Get $get) => $get('payment_type') === PaymentType::RECURRENT)
                             ->schema([
 
                                 /** Dia da recorrência  */
@@ -168,7 +171,7 @@ class TransactionForm
                                     ->minValue(1)
                                     ->maxValue(31)
                                     ->placeholder('Dia do mês')
-                                    ->columnSpan(fn (Get $get) => $get('recurrency_type') === TransactionRecurrencyType::MONTHLY || ! $get('recurrency_type') ? 2 : 1)
+                                    ->columnSpan(fn(Get $get) => $get('recurrency_type') === RecurrencyType::MONTHLY || !$get('recurrency_type') ? 2 : 1)
                                     ->required(),
 
                                 /** Mês da recorrência  */
@@ -177,7 +180,7 @@ class TransactionForm
                                     ->searchable()
                                     ->options(Month::class)
                                     ->required()
-                                    ->visible(fn (Get $get) => $get('recurrency_type') === TransactionRecurrencyType::YEARLY),
+                                    ->visible(fn(Get $get) => $get('recurrency_type') === RecurrencyType::YEARLY),
                             ]),
 
                         /** Quantidade de parcelas */
@@ -189,7 +192,7 @@ class TransactionForm
                             ->minValue(1)
                             ->default(1)
                             ->required()
-                            ->visible(fn (Get $get) => $get('payment_type') === TransactionPaymentType::INSTALLMENTS),
+                            ->visible(fn(Get $get) => $get('payment_type') === PaymentType::INSTALLMENTS),
                     ]),
             ]);
     }
@@ -207,16 +210,34 @@ class TransactionForm
                             ->live()
                             ->native(false)
                             ->types(
-                                array_map(fn ($type) => MorphToSelect\Type::make($type)
+                                array_map(fn($type) => MorphToSelect\Type::make($type)
                                     ->label(match ($type) {
+                                        BankAccount::class => 'Conta Bancária (PIX / Transferência)',
                                         CreditCard::class => 'Cartão de crédito',
-                                        BankAccount::class => 'Conta Bancária (PIX / Transferência)'
                                     })
                                     ->titleAttribute('name')
                                     ->getOptionLabelFromRecordUsing(BillableHelper::getBillableOptionLabel(...)),
-                                    [CreditCard::class, BankAccount::class])
+                                    [BankAccount::class, CreditCard::class])
                             )
-                            ->modifyKeySelectUsing(fn (Select $select): Select => $select->searchable()->preload()->allowHtml())
+                            ->modifyKeySelectUsing(fn(Select $select): Select => $select
+                                ->searchable()
+                                ->preload()
+                                ->allowHtml()
+                                ->live()
+                                ->model(fn(Get $get) => $get('billable_type'))
+                                ->createOptionModalHeading(fn(Get $get) => match ($get('billable_type')) {
+                                    CreditCard::class => "Criar cartão de crédito",
+                                    BankAccount::class => "Criar conta bancária",
+                                })
+                                ->createOptionForm(fn(Get $get, Schema $schema) => match ($get('billable_type')) {
+                                    CreditCard::class => CreditCardForm::configure($schema),
+                                    BankAccount::class => BankAccountForm::configure($schema),
+                                })
+                                ->createOptionusing(function (string $model, array $data): int {
+                                    $billable = $model::create($data);
+                                    return $billable->id;
+                                })
+                            )
                             ->afterStateUpdated(self::updatePayments(...)),
 
                         Grid::make()
@@ -226,17 +247,17 @@ class TransactionForm
                                     ->label('Data da transação')
                                     ->badge()
                                     ->date('d/m/Y')
-                                    ->state(fn (Get $get) => $get('transaction_date')),
+                                    ->state(fn(Get $get) => $get('transaction_date')),
 
                                 /** Recurrency info */
                                 TextEntry::make('recurrency')
                                     ->label('Vencimento')
                                     ->badge()
                                     ->disabled()
-                                    ->hidden(fn (Get $get) => $get('payment_type') !== TransactionPaymentType::RECURRENT)
+                                    ->hidden(fn(Get $get) => $get('payment_type') !== PaymentType::RECURRENT)
                                     ->state(function (Get $get) {
 
-                                        if ($get('payment_type') !== TransactionPaymentType::RECURRENT) {
+                                        if ($get('payment_type') !== PaymentType::RECURRENT) {
                                             return 'N/A';
                                         }
 
@@ -244,8 +265,8 @@ class TransactionForm
                                         $recurringMonth = $get('recurring_month');
 
                                         return match ($get('recurrency_type')) {
-                                            TransactionRecurrencyType::MONTHLY => "Todo dia $recurringDay",
-                                            TransactionRecurrencyType::YEARLY => "Todo dia $recurringDay do mês $recurringMonth",
+                                            RecurrencyType::MONTHLY => "Todo dia $recurringDay",
+                                            RecurrencyType::YEARLY => "Todo dia $recurringDay do mês $recurringMonth",
                                             default => 'N/A'
                                         };
 
@@ -254,7 +275,7 @@ class TransactionForm
 
                         /** Itens/Installments */
                         Repeater::make('payments')
-                            ->label(fn (Get $get) => str('Pagamento')->plural($get('payments_count')))
+                            ->label(fn(Get $get) => str('Pagamento')->plural($get('payments_count')))
                             ->relationship()
                             ->table([
                                 Repeater\TableColumn::make('#'),
@@ -274,7 +295,7 @@ class TransactionForm
                                 TextEntry::make('payment_number_info')
                                     ->label('Parcela')
                                     ->saved(false)
-                                    ->state(fn (Get $get) => $get('payment_number'))
+                                    ->state(fn(Get $get) => $get('payment_number'))
                                     ->disabled(),
 
                                 /** Valor */
@@ -307,14 +328,14 @@ class TransactionForm
                                     ->preload()
                                     ->live()
                                     ->selectablePlaceholder(false)
-                                    ->afterStateUpdated(fn (Set $set) => $set('payment_date', null))
+                                    ->afterStateUpdated(fn(Set $set) => $set('payment_date', null))
                                     ->options(PaymentStatus::class),
                             ])
-                            ->visible(fn (Get $get) => filled($get('payments')))
+                            ->visible(fn(Get $get) => filled($get('payments')))
                             ->addActionLabel('Adicionar parcela')
-                            ->addable(fn (Get $get) => $get('payment_type') === TransactionPaymentType::INSTALLMENTS)
-                            ->deletable(fn (Get $get) => $get('payment_type') !== TransactionPaymentType::SINGLE)
-                            ->minItems(fn (Get $get) => $get('payments_count') ?: 1)
+                            ->addable(fn(Get $get) => $get('payment_type') === PaymentType::INSTALLMENTS)
+                            ->deletable(fn(Get $get) => $get('payment_type') !== PaymentType::SINGLE)
+                            ->minItems(fn(Get $get) => $get('payments_count') ?: 1)
                             ->compact(),
 
                     ]),
@@ -323,11 +344,11 @@ class TransactionForm
 
     private static function updatePayments(Get $get, Set $set, ?Transaction $record): void
     {
-        $needsToUpdate = ! $record
+        $needsToUpdate = !$record
             || $get('payments_count') != $record->payments_count
-            || CurrencyHelper::stringToFloat($get('total_amount')) !== (float) $record->total_amount;
+            || CurrencyHelper::stringToFloat($get('total_amount')) !== (float)$record->total_amount;
 
-        if (! $needsToUpdate) {
+        if (!$needsToUpdate) {
             return;
         }
 
@@ -338,20 +359,20 @@ class TransactionForm
             transactionType: $get->enum('transaction_type', TransactionType::class),
             transactionCategory: TransactionCategory::find($get('transaction_category_id')),
             notes: $get('notes'),
-            paymentType: $get->enum('payment_type', TransactionPaymentType::class),
+            paymentType: $get->enum('payment_type', PaymentType::class),
             totalAmount: CurrencyHelper::stringToFloat($get('total_amount')),
-            recurrencyType: $get->enum('recurrency_type', TransactionRecurrencyType::class),
+            recurrencyType: $get->enum('recurrency_type', RecurrencyType::class),
             transactionDate: Carbon::parse($get('transaction_date')),
             recurringDay: $get('recurring_day'),
             recurringMonth: $get->enum('recurring_month', Month::class),
-            paymentsCount: (int) $get('payments_count'),
+            paymentsCount: (int)$get('payments_count'),
             billableType: $get('billable_type'),
             billableId: $get('billable_id'),
         ));
 
         $set(
             'payments',
-            $payments->map(fn (TransactionPayment $item) => $item
+            $payments->map(fn(Payment $item) => $item
                 ->fill([
                     'amount' => number_format($item->amount, 2, ',', '.'),
                     'paid_amount' => number_format($item->paid_amount, 2, ',', '.'),

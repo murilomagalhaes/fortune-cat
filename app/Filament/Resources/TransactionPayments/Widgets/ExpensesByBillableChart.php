@@ -4,7 +4,7 @@ namespace App\Filament\Resources\TransactionPayments\Widgets;
 
 use App\Enums\TransactionType;
 use App\Filament\Resources\TransactionPayments\Pages\ListTransactionPayments;
-use App\Models\TransactionPayment;
+use App\Models\Payment;
 use Filament\Support\Colors\Color;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
@@ -30,21 +30,21 @@ class ExpensesByBillableChart extends ChartWidget
         $year = data_get($this->tableFilters, 'billing_month_year.billing_year', now()->year);
         $month = data_get($this->tableFilters, 'billing_month_year.billing_month', now()->month);
 
-        $payments = TransactionPayment::query()
+        $payments = Payment::query()
             ->filterBillingYearMonth($year, $month)
             ->where('transactions.transaction_type', TransactionType::EXPENSE->value)
             ->with(['billable'])
             ->get();
 
         $grouped = $payments
-            ->groupBy(fn (TransactionPayment $p) => $p->billable?->title ?? 'N/A')
+            ->groupBy(fn (Payment $p) => $p->billable?->title ?? 'N/A')
             ->map(fn ($group) => round($group->sum('amount'), 2))
             ->sortByDesc(fn ($v) => $v);
 
 
         $billableColors = $payments
             ->sortByDesc(fn ($p) => $p->amount)
-            ->groupBy(fn (TransactionPayment $p) => $p->billable)
+            ->groupBy(fn (Payment $p) => $p->billable)
             ->map(fn ($group) => $group->first()->billable?->color ?? '#CCCCCC')
             ->values()
             ->toArray();
