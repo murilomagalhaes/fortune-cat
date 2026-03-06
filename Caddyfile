@@ -2,7 +2,7 @@
 	frankenphp
 }
 
-localhost {
+$SERVER_NAME {
 	root public/
 	encode zstd br gzip
 	php_server {
