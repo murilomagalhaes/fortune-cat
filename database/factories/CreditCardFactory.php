@@ -2,27 +2,41 @@
 
 namespace Database\Factories;
 
+use App\Enums\ColorPalette;
+use App\Helpers\ColorHelper;
 use App\Models\BankAccount;
-use App\Models\CreditCard;
+use App\Models\User;
+use Filament\Support\Colors\Color;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<CreditCard>
- */
 class CreditCardFactory extends Factory
 {
-    protected $model = CreditCard::class;
-
     public function definition(): array
     {
+        $colors = Color::all();
+
+        $colorPalette = fake()->randomElement(array_keys($colors));
+        $color = fake()->randomElement(array_values($colors[$colorPalette]));
+
         return [
-            'name' => fake()->creditCardType(),
+            'name' => fake()->word(),
             'total_limit' => fake()->randomFloat(2, 1000, 20000),
-            'used_limit' => 0,
-            'billing_cycle_end_date' => fake()->numberBetween(1, 28),
-            'due_date' => fake()->numberBetween(1, 28),
-            'bank_account_id' => BankAccount::factory(),
-            'color' => fake()->hexColor(),
+            'used_limit' => fake()->randomFloat(2, 0, 1000),
+            'billing_cycle_end_date' => fake()->numberBetween(1, 6),
+            'due_date' => fake()->numberBetween(10, 17),
+            'color_palette' => $colorPalette,
+            'color' => $color,
+            'bank_account_id' => null,
+            'user_id' => User::factory(),
         ];
+    }
+
+    public function withBankAccount(): static
+    {
+        return $this->state(fn(array $attributes) => [
+            'bank_account_id' => BankAccount::factory()->state([
+                'user_id' => $attributes['user_id'],
+            ]),
+        ]);
     }
 }

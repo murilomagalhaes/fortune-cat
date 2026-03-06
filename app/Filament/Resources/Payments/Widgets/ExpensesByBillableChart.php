@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\TransactionPayments\Widgets;
+namespace App\Filament\Resources\Payments\Widgets;
 
 use App\Enums\TransactionType;
-use App\Filament\Resources\TransactionPayments\Pages\ListTransactionPayments;
+use App\Filament\Resources\Payments\Pages\ListPayments;
 use App\Models\Payment;
 use Filament\Support\Colors\Color;
 use Filament\Support\RawJs;
@@ -16,7 +16,7 @@ class ExpensesByBillableChart extends ChartWidget
 
     protected function getTablePage(): string
     {
-        return ListTransactionPayments::class;
+        return ListPayments::class;
     }
 
     protected ?string $heading = 'Despesas por Carteira';

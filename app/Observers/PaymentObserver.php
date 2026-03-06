@@ -8,8 +8,12 @@ use App\Models\BankAccount;
 use App\Models\CreditCard;
 use App\Models\Payment;
 
-class TransactionPaymentObserver
+class PaymentObserver
 {
+    public function created(Payment $payment): void
+    {
+        $this->handleBalanceUpdate($payment);
+    }
 
     public function updated(Payment $payment): void
     {

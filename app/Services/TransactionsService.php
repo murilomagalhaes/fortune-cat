@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\DTO\TransactionDTO;
+use App\Enums\PaymentStatus;
 use App\Enums\PaymentType;
 use App\Enums\RecurrencyType;
-use App\Enums\PaymentStatus;
 use App\Models\CreditCard;
 use App\Models\Payment;
 use Carbon\Carbon;
@@ -20,7 +20,7 @@ class TransactionsService
 
         if ($dto->paymentType === PaymentType::RECURRENT) {
             $billingDate->startOfMonth()->day($dto->recurringDay);
-        } else if ($dto->billableType === CreditCard::class && $dto->billableId) {
+        } elseif ($dto->billableType === CreditCard::class && $dto->billableId) {
 
             $creditCard = CreditCard::find($dto->billableId);
 
@@ -34,8 +34,13 @@ class TransactionsService
         $yearsSinceTransaction = ceil(Carbon::now()->diffInYears($dto->transactionDate, true));
         $monthsSinceTransaction = ceil(Carbon::now()->diffInMonths($dto->transactionDate, true));
 
-        $paymentsCount = $dto->recurrencyType === RecurrencyType::MONTHLY ? $monthsSinceTransaction + 1 : $paymentsCount;
-        $paymentsCount = $dto->recurrencyType === RecurrencyType::YEARLY ? $yearsSinceTransaction + 1 : $paymentsCount;
+        $paymentsCount = $dto->recurrencyType === RecurrencyType::MONTHLY
+            ? $monthsSinceTransaction + 1
+            : $paymentsCount;
+
+        $paymentsCount = $dto->recurrencyType === RecurrencyType::YEARLY
+            ? $yearsSinceTransaction + 1
+            : $paymentsCount;
 
         $items = collect();
 
@@ -61,10 +66,8 @@ class TransactionsService
                 default => $billingDate->clone()->addMonth(),
             };
 
-
         }
 
         return $items;
     }
-
 }

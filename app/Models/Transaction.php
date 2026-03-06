@@ -5,16 +5,23 @@ namespace App\Models;
 use App\Enums\PaymentType;
 use App\Enums\RecurrencyType;
 use App\Enums\TransactionType;
+use App\Models\Scopes\UserScope;
+use App\Observers\BelongsToUserObserver;
+use App\Traits\BelongsToUser;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
+#[ObservedBy([BelongsToUserObserver::class])]
+#[ScopedBy(UserScope::class)]
 class Transaction extends Model
 {
-    /** @use HasFactory<\Database\Factories\TransactionFactory> */
-    use HasFactory;
+    use BelongsToUser, HasFactory, HasUlids;
 
     protected $guarded = ['id', 'created_at', 'updated_at'];
 
@@ -42,13 +49,11 @@ class Transaction extends Model
 
     public function billable(): MorphTo
     {
-        return $this->morphTo();
+        return $this->morphTo()->withTrashed();
     }
 
     public function isRecurring(): bool
     {
         return $this->payment_type === PaymentType::RECURRENT;
     }
-
-
 }

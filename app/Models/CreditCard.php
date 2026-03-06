@@ -2,17 +2,24 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\UserScope;
+use App\Observers\BelongsToUserObserver;
+use App\Traits\BelongsToUser;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+#[ObservedBy([BelongsToUserObserver::class])]
+#[ScopedBy(UserScope::class)]
 class CreditCard extends Model
 {
-    /** @use HasFactory<\Database\Factories\CreditCardFactory> */
-    use HasFactory, SoftDeletes;
+    use BelongsToUser, HasFactory, HasUlids, SoftDeletes;
 
     protected $guarded = ['id', 'created_at', 'updated_at', 'deleted_at'];
 
@@ -44,12 +51,12 @@ class CreditCard extends Model
     public function availableLimit(): Attribute
     {
         return Attribute::make(get: function () {
-            return (float)$this->total_limit - (float)$this->used_limit;
+            return (float) $this->total_limit - (float) $this->used_limit;
         });
     }
 
     public function title(): Attribute
     {
-        return new Attribute(get: fn() => "[Cartão] {$this->name}");
+        return new Attribute(get: fn () => "[Cartão] {$this->name}");
     }
 }

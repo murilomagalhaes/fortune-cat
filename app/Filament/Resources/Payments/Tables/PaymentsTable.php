@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\TransactionPayments\Tables;
+namespace App\Filament\Resources\Payments\Tables;
 
 use App\Enums\Month;
 use App\Enums\PaymentStatus;
@@ -8,7 +8,7 @@ use App\Enums\PaymentType;
 use App\Enums\RecurrencyType;
 use App\Enums\TransactionType;
 use App\Filament\Inputs\CurrencyInput;
-use App\Filament\Resources\TransactionPayments\Widgets\AmountsOverview;
+use App\Filament\Resources\Payments\Widgets\AmountsOverview;
 use App\Filament\Resources\Transactions\Pages\EditTransaction;
 use App\Filament\Resources\Transactions\Schemas\TransactionForm;
 use App\Helpers\BillableHelper;
@@ -40,7 +40,7 @@ use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder;
 
-class TransactionPaymentsTable
+class PaymentsTable
 {
     public static function configure(Table $table): Table
     {
@@ -71,7 +71,7 @@ class TransactionPaymentsTable
                     })
                     ->label('Nome')
                     ->searchable()
-                    ->url(fn (Payment $record) => route(EditTransaction::getRouteName(), [$record->transaction->id]))
+                    ->url(fn (Payment $record) => route(EditTransaction::getRouteName(), [auth()->user()->id, $record->transaction->id]))
                     ->color('primary'),
 
                 /** Categoria */

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\TransactionPayments\Widgets;
+namespace App\Filament\Resources\Payments\Widgets;
 
 use App\Enums\TransactionType;
 use App\Models\Payment;

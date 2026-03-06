@@ -2,24 +2,29 @@
 
 namespace App\Models;
 
-use App\Enums\RecurrencyType;
 use App\Enums\PaymentStatus;
+use App\Enums\RecurrencyType;
 use App\Enums\TransactionType;
-use App\Observers\TransactionPaymentObserver;
+use App\Models\Scopes\UserScope;
+use App\Observers\BelongsToUserObserver;
+use App\Observers\PaymentObserver;
+use App\Traits\BelongsToUser;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
-#[ObservedBy([TransactionPaymentObserver::class])]
+#[ObservedBy([PaymentObserver::class, BelongsToUserObserver::class])]
+#[ScopedBy(UserScope::class)]
 class Payment extends Model
 {
-    /** @use HasFactory<\Database\Factories\TransactionPaymentFactory> */
-    use HasFactory;
+    use BelongsToUser, HasFactory, HasUlids;
 
     protected $guarded = ['id', 'created_at', 'updated_at'];
 
@@ -34,9 +39,8 @@ class Payment extends Model
 
     public function billable(): MorphTo
     {
-        return $this->morphTo();
+        return $this->morphTo()->withTrashed();
     }
-
 
     public function transaction(): BelongsTo
     {
@@ -101,12 +105,11 @@ class Payment extends Model
     }
 
     public function markAsPaid(
-        ?float             $paidAmount = null,
+        ?float $paidAmount = null,
         null|string|Carbon $paymentDate = null,
-        ?string            $billableType = null,
-        mixed              $billableId = null
-    ): bool
-    {
+        ?string $billableType = null,
+        mixed $billableId = null
+    ): bool {
         if ($this->isPaid()) {
             return true;
         }
@@ -127,40 +130,39 @@ class Payment extends Model
 
         return $query
             ->leftJoinRelation('transaction')
-            ->where(function (Builder $query) use ($month, $padYear, $lastDayOfMonth) {
-                $query
-                    ->where(function (Builder $query) use ($month, $padYear) {
-                        $query->whereMonth('payments.billing_date', '=', $month)
-                            ->whereYear('payments.billing_date', '=', $padYear);
-                    })
-                    // Shows the last pending payment for the recurring months
-                    ->orWhere(function (Builder $query) use ($lastDayOfMonth) {
-                        $query->where('transactions.recurrency_type', '=', RecurrencyType::MONTHLY)
-                            ->where('payments.status', '=', PaymentStatus::PENDING)
-                            ->where('payments.billing_date', '<=', $lastDayOfMonth)
-                            ->where('payments.billing_date', '=', function (QueryBuilder $subQuery) use ($lastDayOfMonth) {
-                                $subQuery->selectRaw('MAX(tp2.billing_date)')
-                                    ->from('payments as tp2')
-                                    ->whereColumn('tp2.transaction_id', 'payments.transaction_id')
-                                    ->where('tp2.status', '=', PaymentStatus::PENDING)
-                                    ->where('tp2.billing_date', '<=', $lastDayOfMonth);
-                            });
-                    })
-                    // Shows the last pending payment for the recurring month/year
-                    ->orWhere(function (Builder $query) use ($month, $padYear) {
-                        $query->where('transactions.recurrency_type', '=', RecurrencyType::YEARLY)
-                            ->where('payments.status', '=', PaymentStatus::PENDING)
-                            ->whereMonth('payments.billing_date', '=', $month)
-                            ->whereYear('payments.billing_date', '<=', $padYear)
-                            ->where('payments.billing_date', '=', function (QueryBuilder $subQuery) use ($month, $padYear) {
-                                $subQuery->selectRaw('MAX(tp2.billing_date)')
-                                    ->from('payments as tp2')
-                                    ->whereColumn('tp2.transaction_id', 'payments.transaction_id')
-                                    ->where('tp2.status', '=', PaymentStatus::PENDING)
-                                    ->whereMonth('tp2.billing_date', '=', $month)
-                                    ->whereYear('tp2.billing_date', '<=', $padYear);
-                            });
-                    });
-            });
+            // Show payments due on the month/year selected
+            ->where(fn (Builder $query) => $query
+                ->whereMonth('payments.billing_date', '=', $month)
+                ->whereYear('payments.billing_date', '=', $padYear)
+            )
+            // Or the last pending payment for the recurring months
+            ->orWhere(fn (Builder $query) => $query
+                ->where('transactions.recurrency_type', '=', RecurrencyType::MONTHLY)
+                ->where('payments.status', '=', PaymentStatus::PENDING)
+                ->where('payments.billing_date', '<=', $lastDayOfMonth)
+                ->where('payments.billing_date', '=', fn (QueryBuilder $subQuery) => $subQuery
+                    ->selectRaw('MAX(tp2.billing_date)')
+                    ->from('payments as tp2')
+                    ->whereColumn('tp2.transaction_id', 'payments.transaction_id')
+                    ->where('tp2.status', '=', PaymentStatus::PENDING)
+                    ->where('tp2.billing_date', '<=', $lastDayOfMonth)
+                )
+            )
+            // Or the last pending payment for the recurring month/year
+            ->orWhere(fn (Builder $query) => $query
+                ->where('transactions.recurrency_type', '=', RecurrencyType::YEARLY)
+                ->where('payments.status', '=', PaymentStatus::PENDING)
+                ->whereMonth('payments.billing_date', '=', $month)
+                ->whereYear('payments.billing_date', '<=', $padYear)
+                ->where('payments.billing_date', '=', fn (QueryBuilder $subQuery) => $subQuery
+                    ->selectRaw('MAX(tp2.billing_date)')
+                    ->from('payments as tp2')
+                    ->whereColumn('tp2.transaction_id', 'payments.transaction_id')
+                    ->where('tp2.status', '=', PaymentStatus::PENDING)
+                    ->whereMonth('tp2.billing_date', '=', $month)
+                    ->whereYear('tp2.billing_date', '<=', $padYear)
+                )
+            );
+
     }
 }

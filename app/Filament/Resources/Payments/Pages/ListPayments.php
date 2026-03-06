@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Filament\Resources\TransactionPayments\Pages;
+namespace App\Filament\Resources\Payments\Pages;
 
 use App\Enums\Month;
-use App\Filament\Resources\TransactionPayments\TransactionPaymentResource;
-use App\Filament\Resources\TransactionPayments\Widgets\AmountsByCategoryChart;
-use App\Filament\Resources\TransactionPayments\Widgets\AmountsOverview;
-use App\Filament\Resources\TransactionPayments\Widgets\ExpensesByBillableChart;
+use App\Filament\Resources\Payments\PaymentResource;
+use App\Filament\Resources\Payments\Widgets\AmountsByCategoryChart;
+use App\Filament\Resources\Payments\Widgets\AmountsOverview;
+use App\Filament\Resources\Payments\Widgets\ExpensesByBillableChart;
 use App\Filament\Resources\Transactions\Schemas\TransactionForm;
 use App\Models\Transaction;
 use Filament\Actions\CreateAction;
@@ -16,11 +16,11 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 
-class ListTransactionPayments extends ListRecords
+class ListPayments extends ListRecords
 {
     use ExposesTableToWidgets;
 
-    protected static string $resource = TransactionPaymentResource::class;
+    protected static string $resource = PaymentResource::class;
 
 
     public function getTitle(): string|Htmlable

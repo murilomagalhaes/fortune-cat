@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\TransactionPayments\Widgets;
+namespace App\Filament\Resources\Payments\Widgets;
 
 use App\Enums\TransactionType;
-use App\Filament\Resources\TransactionPayments\Pages\ListTransactionPayments;
+use App\Filament\Resources\Payments\Pages\ListPayments;
 use App\Models\Payment;
 use Carbon\Carbon;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
@@ -20,7 +20,7 @@ class AmountsOverview extends BaseWidget
 
     protected function getTablePage(): string
     {
-        return ListTransactionPayments::class;
+        return ListPayments::class;
     }
 
     protected function getStats(): array

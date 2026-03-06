@@ -2,21 +2,21 @@
 
 namespace Database\Factories;
 
-use App\Models\TransactionCategory;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<TransactionCategory>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\TransactionCategory>
  */
 class TransactionCategoryFactory extends Factory
 {
-    protected $model = TransactionCategory::class;
-
     public function definition(): array
     {
         return [
             'name' => fake()->word(),
-            'color' => fake()->hexColor(),
+            'color_palette' => null,
+            'color' => null,
+            'user_id' => User::factory(),
         ];
     }
 }
