@@ -38,4 +38,19 @@ O **Fortune Cat** é um gerenciador de finanças pessoais que centraliza o contr
 - Suba os containers com o `docker compose` ou [Sail](https://laravel.com/docs/12.x/sail)
 - Dentro do container da aplicação, execute `php artisan key:generate`, `php artisan migrate` e `composer run dev`
 
+## Executando em produção (Apenas a aplicação)
+**Docker & FrankenPHP**
+- Clone o repositório
+- Preencha o .env (Inclusive a APP_KEY)
+- Construa a imagem com `docker build -t fortune-cat .`
+- Suba a imagem com:
+```bash
+    docker run -d \
+      --env-file .env \
+      -p 80:80 \
+      -p 443:443 \
+      -e SERVER_NAME="example.com.br" \
+      --name fortune-cat \
+      fortune-cat
+```
 
