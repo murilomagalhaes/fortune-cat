@@ -28,7 +28,7 @@ class BankAccountForm
                         /** Saldo */
                         CurrencyInput::make('balance')
                             ->prefix("R$")
-                            ->default(0)
+                            ->placeholder("0,00")
                             ->label('Saldo')
                             ->rules(['numeric'])
                             ->required(),

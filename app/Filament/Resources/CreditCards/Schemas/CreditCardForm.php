@@ -39,6 +39,8 @@ class CreditCardForm
         $set('color_palette', $bankAccount->color_palette);
         $set('color', $bankAccount->color);
 
+        self::updateAvailableLimit($get, $set);
+
     }
 
     public static function configure(Schema $schema): Schema

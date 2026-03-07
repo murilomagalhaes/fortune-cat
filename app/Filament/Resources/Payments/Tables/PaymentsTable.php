@@ -78,7 +78,8 @@ class PaymentsTable
                 TextColumn::make('transaction.category.name')
                     ->label('Categoria')
                     ->placeholder('N/A')
-                    ->searchable()
+                    ->tooltip(fn (Payment $record) => $record->transaction->category?->name)
+                    ->limit(24)
                     ->searchable(),
 
                 /** Carteira */
@@ -96,7 +97,7 @@ class PaymentsTable
 
                 /** Cobrança */
                 TextColumn::make('billing_date')
-                    ->label('Data da cobrança')
+                    ->label('Vencimento')
                     ->width(1)
                     ->date('d/m/Y')
                     ->icon(fn (Payment $record) => $record->transaction->payment_type === PaymentType::RECURRENT ? Heroicon::ArrowPath : null)
@@ -116,22 +117,14 @@ class PaymentsTable
                     })
                     ->sortable(),
 
-                /** Cobrança */
+                /** Pago em */
                 TextColumn::make('payment_date')
                     ->label('Pago em')
                     ->width(1)
                     ->date('d/m/Y')
-                    ->placeholder('Pendente')
+                    ->placeholder('N/A')
                     ->sortable(),
 
-                /** Status */
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->color(fn (PaymentStatus $state) => match ($state) {
-                        PaymentStatus::PENDING => 'warning',
-                        PaymentStatus::PAID => 'success',
-                    }),
 
                 /** Valor */
                 TextColumn::make('amount')
@@ -236,7 +229,7 @@ class PaymentsTable
                     ->requiresConfirmation()
                     ->label('Estornar')
                     ->visible(fn (Payment $record) => $record->isPaid())
-                    ->icon(Heroicon::ArrowUturnLeft)
+                     ->icon(Heroicon::ArrowUturnLeft)
                     ->color(Color::Orange)
                     ->successNotificationTitle('Pagamento estornado com sucesso!')
                     ->action(fn (Payment $record) => $record->markAsPending()),

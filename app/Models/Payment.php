@@ -56,7 +56,7 @@ class Payment extends Model
         return $this->update([
             'status' => PaymentStatus::PENDING,
             'payment_date' => null,
-            'paid_amount' => null,
+            'paid_amount' => 0,
         ]);
     }
 
