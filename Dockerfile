@@ -8,7 +8,6 @@ RUN composer install \
     --no-dev \
     --no-interaction \
     --prefer-dist \
-    --optimize-autoloader \
     --no-scripts \
     --ignore-platform-reqs
 
@@ -31,7 +30,7 @@ COPY public/ public/
 RUN npm run build
 
 # Stage 3: Production image
-FROM dunglas/frankenphp
+FROM dunglas/frankenphp:1-php8.5-alpine
 
 RUN install-php-extensions \
     bcmath \

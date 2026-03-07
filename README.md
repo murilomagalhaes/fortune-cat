@@ -5,6 +5,10 @@
 
 ---
 
+**Disclaimer: A aplicação continua em fase de constante desenvolvimento.**
+
+---
+
 O **Fortune Cat** é um gerenciador de finanças pessoais que centraliza o controle do seu dinheiro em um único lugar. Com ele você registra receitas e despesas, acompanha o saldo de contas bancárias e cartões de crédito, e visualiza o fluxo de caixa mensal por meio de gráficos e indicadores.
 
 **Problemas que resolve:**
@@ -29,7 +33,7 @@ O **Fortune Cat** é um gerenciador de finanças pessoais que centraliza o contr
 - PHP 8.5
 - Laravel 12
 - [FilamentPHP](https://filamentphp.com/) (Livewire, TailwindCSS, AlpineJS)
-- PostgreSQL
+- MySQL
 
 ## Executando a aplicação localmente (Aplicação e Banco)
 **Docker/Laravel Sail**
