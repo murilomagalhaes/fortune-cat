@@ -31,7 +31,7 @@ O **Fortune Cat** é um gerenciador de finanças pessoais que centraliza o contr
 - [FilamentPHP](https://filamentphp.com/) (Livewire, TailwindCSS, AlpineJS)
 - PostgreSQL
 
-## Executando a aplicação localmente:
+## Executando a aplicação localmente (Aplicação e Banco)
 **Docker/Laravel Sail**
 - Clone o repositório
 - Copie o .env.example para .env e altere as variáveis de ambiente
@@ -41,16 +41,6 @@ O **Fortune Cat** é um gerenciador de finanças pessoais que centraliza o contr
 ## Executando em produção (Apenas a aplicação)
 **Docker & FrankenPHP**
 - Clone o repositório
-- Preencha o .env (Inclusive a APP_KEY)
-- Construa a imagem com `docker build -t fortune-cat .`
-- Suba a imagem com:
-```bash
-    docker run -d \
-      --env-file .env \
-      -p 80:80 \
-      -p 443:443 \
-      -e SERVER_NAME="example.com.br" \
-      --name fortune-cat \
-      fortune-cat
-```
+- Preencha o `.env` (inclusive `APP_KEY` e `SERVER_NAME`)
+- Suba a aplicação com: `docker compose -f compose.prod.yaml build && docker compose -f compose.prod.yaml up -d`
 
